@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: PMPro Extra Expiration Warning Emails
+Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: http://www.paidmembershipspro.com/wp/pmpro-extra-expiration-warning-emails/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
 Version: .1
@@ -61,3 +61,18 @@ function pmproeewe_extra_emails()
 		}
 	}
 }
+
+/*
+Function to add links to the plugin row meta
+*/
+function pmproeewe_plugin_row_meta($links, $file) {
+	if(strpos($file, 'pmpro-extra-expiration-warning-emails.php') !== false)
+	{
+		$new_links = array(
+			'<a href="' . esc_url('http://paidmembershipspro.com/support/') . '" title="' . esc_attr( __( 'Visit Customer Support Forum', 'pmpro' ) ) . '">' . __( 'Support', 'pmpro' ) . '</a>',
+		);
+		$links = array_merge($links, $new_links);
+	}
+	return $links;
+}
+add_filter('plugin_row_meta', 'pmproeewe_plugin_row_meta', 10, 2);
