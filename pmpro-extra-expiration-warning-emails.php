@@ -34,12 +34,21 @@ function pmproeewe_extra_emails()
 		create a file in there called myexpirationemail.html, then you'd just put 'myexpirationemail' in the array below.
 		(PMPro will fill in the .html for you.)
 	*/
-	$emails = array(
-		30	=> 'mem_expiring_30days',
-		60	=> 'mem_expiring_60days',
-		90	=>	'mem_expiring_90days'
+	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
+					30	=> 'mem_expiring_30days',
+					60	=> 'mem_expiring_60days',
+					90	=>	'mem_expiring_90days'
+				)
 	);		//<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	ksort($emails, SORT_NUMERIC);
+	
+	// add admin as Cc recipient?
+	$include_admin = apply_filters( 'pmproeewe_bcc_admin_user', false);
+	
+	if ($include_admin) 
+	{
+		add_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_cc');
+	}
 	
 	//array to store ids of folks we sent emails to so we don't email them twice
 	$sent_emails = array();
@@ -83,6 +92,25 @@ function pmproeewe_extra_emails()
 			update_user_meta($e->user_id, "pmpro_expiration_notice_" . $days, $today);
 		}
 	}
+	
+	// remove the filter for admin
+	if ($include_admin) 
+	{
+		remove_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_bcc');
+	}
+
+}
+
+/*
+Filter to add admin as Bcc for messages from this add-on
+*/
+function pmproeewe_add_admin_as_bcc( $headers ) {
+	
+	$a_email = get_option('admin_email');
+	$admin = get_user_by('email', $a_email);
+	$headers[] = "Bcc: {$admin->first_name} {$user->last_name} <{$admin->user_email}>";
+	
+	return $headers;
 }
 
 /*
