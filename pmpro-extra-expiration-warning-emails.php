@@ -58,7 +58,7 @@ function pmproeewe_extra_emails()
 				//send an email
 				$pmproemail = new PMProEmail();
 				$euser = get_userdata($e->user_id);		
-				$pmproemail->sendMembershipExpiringEmail($euser);
+
 				if($euser) {
 					$euser->membership_level = pmpro_getMembershipLevelForUser($euser->ID);
 						
