@@ -36,3 +36,7 @@ Please visit our premium support site at http://www.paidmembershipspro.com for m
 
 = .1 =
 * Initial commit.
+
+== Upgrade Notice ==
+= .3 =
+IMPORTANT NOTE: You or a developer may have edited this plugin to set specific timing for the extra expiration warning emails. If so, do not upgrade unless you are okay with the default 30, 60, 90 periods or have backed up your settings so you can implement them again in the new version of this addon. 

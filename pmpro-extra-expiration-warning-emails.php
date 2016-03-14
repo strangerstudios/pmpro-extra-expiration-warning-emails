@@ -35,9 +35,9 @@ function pmproeewe_extra_emails()
 		(PMPro will fill in the .html for you.)
 	*/
 	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
-					30	=> 'mem_expiring_30days',
-					60	=> 'mem_expiring_60days',
-					90	=>	'mem_expiring_90days'
+					30	=> 'membership_expiring',
+					60	=> 'membership_expiring',
+					90	=> 'membership_expiring'
 				)
 	);		//<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	ksort($emails, SORT_NUMERIC);
