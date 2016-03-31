@@ -56,7 +56,28 @@ function pmproeewe_extra_emails()
 	foreach(array_keys($emails) as $days)
 	{	
 		//look for memberships that are going to expire within one week (but we haven't emailed them within a week)
-		$sqlQuery = "SELECT mu.user_id, mu.membership_id, mu.startdate, mu.enddate FROM $wpdb->pmpro_memberships_users mu LEFT JOIN $wpdb->usermeta um ON um.user_id = mu.user_id AND um.meta_key = 'pmpro_expiration_notice_" . $days . "' WHERE mu.status = 'active' AND mu.enddate IS NOT NULL AND mu.enddate <> '' AND mu.enddate <> '0000-00-00 00:00:00' AND DATE_SUB(mu.enddate, INTERVAL " . $days . " Day) <= '" . $today . "' AND (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL " . $days . " Day) <= '" . $today . "') ORDER BY mu.enddate";
+		$sqlQuery = $wpdb->prepare(
+			"SELECT mu.user_id, mu.membership_id, mu.startdate, mu.enddate
+		 	FROM {$wpdb->pmpro_memberships_users} AS mu
+         	 	LEFT JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id AND um.meta_key = %s
+				INNER JOIN {$wpdb->users} AS u ON u.ID = mu.user_id AND (
+					mu.membership_id <> 0 OR
+					mu.membership_id <> NULL OR
+					mu.membership_id <> 'NULL'
+				)
+		 	WHERE mu.status = 'active'
+      	 	 		AND mu.enddate IS NOT NULL
+				AND mu.enddate <> ''
+				AND mu.enddate <> '0000-00-00 00:00:00'
+			AND DATE_SUB(mu.enddate, INTERVAL %d Day) <= %s
+			AND (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d Day) <= %s)
+		 	ORDER BY mu.enddate",
+		 	"pmpro_expiration_notice_{$pmpro_email_days_before_expiration}",
+		 	$pmpro_email_days_before_expiration,
+		 	$today,
+		 	$pmpro_email_days_before_expiration,
+		 	$today
+		);
 
 		$expiring_soon = $wpdb->get_results($sqlQuery);
 				
