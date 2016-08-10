@@ -63,7 +63,10 @@ function pmproeewe_extra_emails()
 			  mu.startdate,
 			  mu.enddate
 			FROM {$wpdb->pmpro_memberships_users} AS mu
-			  LEFT JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id AND um.meta_key = %s
+			  LEFT JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id AND (
+	    			um.meta_key = %s AND
+	    			(um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s)
+              		  )
 			  INNER JOIN {$wpdb->users} AS u ON u.ID = mu.user_id AND (
 			    mu.membership_id <> 0 OR
 			    mu.membership_id <> NULL
@@ -72,13 +75,10 @@ function pmproeewe_extra_emails()
 			      AND mu.enddate IS NOT NULL
 			      AND mu.enddate <> '0000-00-00 00:00:00'
 			      AND DATE_SUB(mu.enddate, INTERVAL %d DAY) <= %s
-			      AND (um.meta_key = %s AND
-			           (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s))
 			ORDER BY mu.enddate;",
 			"pmpro_expiration_notice_{$days}",
 			$days,
 			$today,
-			"pmpro_expiration_notice_{$days}",
 			$days,
 			$today
 		);
