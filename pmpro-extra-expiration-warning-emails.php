@@ -47,7 +47,7 @@ function pmproeewe_extra_emails()
 	
 	if ($include_admin) 
 	{
-		add_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_cc');
+		add_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_bcc');
 	}
 	
 	//array to store ids of folks we sent emails to so we don't email them twice
