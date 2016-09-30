@@ -73,7 +73,7 @@ function pmproeewe_extra_emails()
 				AND (mu.membership_id <> 0 OR mu.membership_id <> NULL)
                 AND (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s)
 			ORDER BY mu.enddate",
-			"pmpro_expiration_notice",
+			"pmpro_expiration_notice_{$days}",
 			$days,
 			$today,
 			$days,
