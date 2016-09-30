@@ -3,7 +3,7 @@
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: http://www.paidmembershipspro.com/wp/pmpro-extra-expiration-warning-emails/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
-Version: .3.4
+Version: .3.5
 Author: Stranger Studios
 Author URI: http://www.strangerstudios.com
 */
@@ -53,27 +53,27 @@ function pmproeewe_extra_emails()
 	//array to store ids of folks we sent emails to so we don't email them twice
 	$sent_emails = array();
 	
-	foreach(array_keys($emails) as $days)
-	{	
-		//look for memberships that are going to expire within one week (but we haven't emailed them within a week)
+	foreach($emails as $days)
+	{
 		$sqlQuery = $wpdb->prepare(
 			"SELECT
 				mu.user_id,
 				mu.membership_id,
 				mu.startdate,
-				mu.enddate
-			FROM {$wpdb->pmpro_memberships_users} AS mu
-			  INNER JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id AND (
-			    um.meta_key = %s AND
-			    (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s)
-			  )
+				mu.enddate,
+                um.meta_value notified
+			FROM {$wpdb->pmpro_memberships_users} mu
+            LEFT JOIN {$wpdb->usermeta} um
+            ON um.user_id = mu.user_id
+              	AND um.meta_key = %s
 			WHERE mu.status = 'active'
-			      AND mu.enddate IS NOT NULL
-			      AND mu.enddate <> '0000-00-00 00:00:00'
-			      AND DATE_SUB(mu.enddate, INTERVAL %d DAY) <= %s
-			      AND (mu.membership_id <> 0 OR mu.membership_id <> NULL)
+				AND mu.enddate IS NOT NULL
+				AND mu.enddate <> '0000-00-00 00:00:00'
+				AND DATE_SUB(mu.enddate, INTERVAL %d DAY) <= %s
+				AND (mu.membership_id <> 0 OR mu.membership_id <> NULL)
+                AND (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s)
 			ORDER BY mu.enddate",
-			"pmpro_expiration_notice_{$days}",
+			"pmpro_expiration_notice",
 			$days,
 			$today,
 			$days,
