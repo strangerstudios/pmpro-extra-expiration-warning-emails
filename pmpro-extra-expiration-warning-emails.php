@@ -52,8 +52,8 @@ function pmproeewe_extra_emails()
 	
 	//array to store ids of folks we sent emails to so we don't email them twice
 	$sent_emails = array();
-	
-	foreach($emails as $days)
+
+	foreach(array_keys($emails) as $days)
 	{
 		$sqlQuery = $wpdb->prepare(
 			"SELECT
