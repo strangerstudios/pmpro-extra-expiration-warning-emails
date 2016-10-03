@@ -28,7 +28,7 @@ Please visit our premium support site at http://www.paidmembershipspro.com for m
 
 == Changelog ==
 = .3.5 =
-* BUG: Now finding expiring users correctly.
+* BUG: Another fix to the query to find expiring and exlcude users who already received an email recently.
 
 = .3.4 =
 * BUG: Didn't correctly exclude all previously notified users
