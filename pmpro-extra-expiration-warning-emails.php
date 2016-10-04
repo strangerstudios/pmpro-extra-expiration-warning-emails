@@ -62,7 +62,11 @@ function pmproeewe_extra_emails()
 				)
 	);		//<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	ksort($emails, SORT_NUMERIC);
-	
+
+	if ($pmproeewe_test) {
+		trigger_error("PMPROEEWE Template array: " . print_r( $emails, true ), E_USER_ERROR);
+	}
+
 	// add admin as Cc recipient?
 	$include_admin = apply_filters( 'pmproeewe_bcc_admin_user', false);
 	
