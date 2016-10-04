@@ -14,6 +14,26 @@ add_filter("pmpro_send_expiration_warning_email", "__return_false");
 //now add our new function to run on crons
 add_action("pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30);
 
+// Disable test code.
+global $pmproeewe_test;
+$pmproeewe_test = false;
+
+/**
+ * Trigger execution of test version for the plugin.
+ */
+function pmproeewe_test() {
+
+	global $pmproeewe_test;
+
+	if (isset($_REQUEST['pmproeewe_test']) && intval($_REQUEST['pmproeewe_test']) === 1) {
+
+		$pmproeewe_test = true;
+		pmproeewe_extra_emails();
+	}
+}
+
+add_action('plugins_loaded', 'pmproeewe_test');
+
 /*
 	New expiration email function.
 	Set the $emails array to include the days you want to send warning emails.
@@ -22,7 +42,8 @@ add_action("pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30);
 function pmproeewe_extra_emails()
 {
 	global $wpdb;
-	
+	global $pmproeewe_test;
+
 	//make sure we only run once a day
 	$today = date("Y-m-d 00:00:00");
 	
@@ -80,6 +101,10 @@ function pmproeewe_extra_emails()
 			$today
 		);
 
+		if ( WP_DEBUG && $pmproeewe_test ) {
+			trigger_error("PMPROEEWE SQL used: {$sqlQuery}", E_USER_ERROR );
+		}
+
 		$expiring_soon = $wpdb->get_results($sqlQuery);
 
 		foreach($expiring_soon as $e)
@@ -101,17 +126,28 @@ function pmproeewe_extra_emails()
 						$pmproemail->template = "membership_expiring";
 					}
 					$pmproemail->data = array("subject" => $pmproemail->subject, "name" => $euser->display_name, "user_login" => $euser->user_login, "sitename" => get_option("blogname"), "membership_id" => $euser->membership_level->id, "membership_level_name" => $euser->membership_level->name, "siteemail" => pmpro_getOption("from_email"), "login_link" => wp_login_url(), "enddate" => date(get_option('date_format'), $euser->membership_level->enddate), "display_name" => $euser->display_name, "user_email" => $euser->user_email);			
-			
-					$pmproemail->sendEmail();
-				
+
+					// Only actually send the message if we're not testing.
+					if ( false === $pmproeewe_test ) {
+						$pmproemail->sendEmail();
+					} else {
+						if (WP_DEBUG && $pmproeewe_test) {
+							trigger_error("PMPROEEWE: Test mode. Faking email using template {$pmproemail->template} to {$euser->email} with parameters: " . print_r( $pmproemail->data, true ), E_USER_ERROR );
+						}
+					}
+
 					printf(__("Membership expiring email sent to %s. ", "pmpro"), $euser->user_email);
 				
 					$sent_emails[] = $e->user_id;
 				}
 			}
-				
-			//update user meta so we don't email them again
-			update_user_meta($e->user_id, "pmpro_expiration_notice_" . $days, $today);
+
+			if ( false === $pmproeewe_test ) {
+				//update user meta so we don't email them again
+				update_user_meta($e->user_id, "pmpro_expiration_notice_" . $days, $today);
+			} else {
+				trigger_error("PMPROEEWE user meta update for {$e->user_id}: 'pmpro_expiration_notice_{$days} = {$today}", E_USER_ERROR );
+			}
 		}
 	}
 	
