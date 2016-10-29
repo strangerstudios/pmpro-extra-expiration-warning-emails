@@ -3,7 +3,7 @@ Contributors: strangerstudios
 Tags: pmpro, paid memberships pro, members, expiration, email, member communication
 Requires at least: 3.5
 Tested up to: 4.6.1
-Stable tag: .3.5
+Stable tag: .3.6
 
 Send more than one customized "membership expiration warning" email to users with PMPro.
 
@@ -27,6 +27,10 @@ Please post it in the issues section of GitHub and we'll fix it as soon as we ca
 Please visit our premium support site at http://www.paidmembershipspro.com for more documentation and our support forums.
 
 == Changelog ==
+= .3.6 =
+* BUG: Sends repeating warnings to same users for the same 'days until expiration' setting on consequtive days
+* ENHANCEMENT: Using 'pmproeewe_test=1' and 'pmproeewe_test_date=YYYY-MM-DD' (for '$today' variable) in URL (as GET request) to test data retrieval and _not_ send warning messages (but log them to error_log() if WP_DEBUG is defined and true)
+
 = .3.5 =
 * BUG: Another fix to the query to find expiring and exlcude users who already received an email recently.
 
