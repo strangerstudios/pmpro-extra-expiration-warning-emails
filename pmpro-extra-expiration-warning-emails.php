@@ -19,7 +19,7 @@ add_action( "pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30 );
  */
 function pmproeewe_test() {
 
-	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 ) {
+	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
 
 		// Force the system to _not_ send out emails
 		add_filter( 'pmproeewe_send_reminder_to_user', '__return_false', 999 );
@@ -78,7 +78,7 @@ function pmproeewe_extra_emails() {
 	$last = null;
 
 	// Allow test environment to determine the value of 'today'.
-	if ( ! isset( $_REQUEST['pmproeewe_test_date'] ) ) {
+	if ( ! isset( $_REQUEST['pmproeewe_test_date'] ) && current_user_can( 'manage_options' ) ) {
 
 		//default: make sure we only run once a day
 		$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
@@ -106,7 +106,7 @@ function pmproeewe_extra_emails() {
 
 	ksort( $emails, SORT_NUMERIC );
 
-	if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+	if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
 	}
 
@@ -125,7 +125,7 @@ function pmproeewe_extra_emails() {
 		$meta = "pmpro_expiration_notice_{$days}";
 
 		// use a dummy meta value for tests
-		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 ) {
+		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
 			$meta = "pmpro_expiration_test_notice_{$days}";
 		}
 
@@ -166,13 +166,13 @@ function pmproeewe_extra_emails() {
 			$interval_end
 		);
 
-		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 			error_log( "PMPROEEWE SQL used: {$sqlQuery}" );
 		}
 
 		$expiring_soon = $wpdb->get_results( $sqlQuery );
 
-		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 			error_log( "PMPROEEWE: Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
 		}
 
@@ -213,7 +213,7 @@ function pmproeewe_extra_emails() {
 
 					$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
 
-					if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] )  ) {
+					if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 						error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
 					}
 				}
