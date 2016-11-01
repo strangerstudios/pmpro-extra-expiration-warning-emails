@@ -28,7 +28,7 @@ Please visit our premium support site at http://www.paidmembershipspro.com for m
 
 == Changelog ==
 = .3.6 =
-* BUG: Sends repeating warnings to same users for the same 'days until expiration' setting on consequtive days
+* BUG: Fixed bug where members were receiving warnings multiple days in a row.
 * ENHANCEMENT: Using 'pmproeewe_test=1' and 'pmproeewe_test_date=YYYY-MM-DD' (for '$today' variable) in URL (as GET request) to test data retrieval and _not_ send warning messages (but log them to error_log() if WP_DEBUG is defined and true)
 
 = .3.5 =
