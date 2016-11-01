@@ -3,29 +3,92 @@
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: http://www.paidmembershipspro.com/wp/pmpro-extra-expiration-warning-emails/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
-Version: .3.5
+Version: .3.6
 Author: Stranger Studios
 Author URI: http://www.strangerstudios.com
 */
 
 //first, disable the default email
-add_filter("pmpro_send_expiration_warning_email", "__return_false");
+add_filter( "pmpro_send_expiration_warning_email", "__return_false" );
 
 //now add our new function to run on crons
-add_action("pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30);
+add_action( "pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30 );
+
+/**
+ * Trigger execution of test version for the plugin.
+ */
+function pmproeewe_test() {
+
+	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 ) {
+
+		// Force the system to _not_ send out emails
+		add_filter( 'pmproeewe_send_reminder_to_user', '__return_false', 999 );
+
+		if ( WP_DEBUG ) {
+			error_log( "PMPROEEWE: Running expiration fuctionality" );
+		}
+
+		pmproeewe_extra_emails();
+
+		if ( WP_DEBUG ) {
+			error_log( "PMPROEEWE: Running the expiration functionality again (expecting no records found)" );
+		}
+
+		pmproeewe_extra_emails();
+
+		if ( WP_DEBUG ) {
+			error_log( "PMPROEEWE: Cleaning up after the test" );
+		}
+
+		pmproeewe_cleanup_test();
+	}
+}
+
+add_action( 'init', 'pmproeewe_test' );
+
+function pmproeewe_cleanup_test() {
+
+	global $wpdb;
+
+	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
+			30 => 'membership_expiring',
+			60 => 'membership_expiring',
+			90 => 'membership_expiring'
+		)
+	);
+
+	// Sort the received array in numeric order
+	ksort( $emails, SORT_NUMERIC );
+
+	foreach ( $emails as $days => $template ) {
+
+		$meta = $meta = "pmpro_expiration_test_notice_{$days}";
+		$wpdb->delete( $wpdb->usermeta, array( 'meta_key' => $meta ) );
+	}
+}
 
 /*
 	New expiration email function.
 	Set the $emails array to include the days you want to send warning emails.
 	e.g. array(30,60,90) sends emails 30, 60, and 90 days before expiration.
 */
-function pmproeewe_extra_emails()
-{
+function pmproeewe_extra_emails() {
 	global $wpdb;
-	
-	//make sure we only run once a day
-	$today = date("Y-m-d 00:00:00");
-	
+
+	$last = null;
+
+	// Allow test environment to determine the value of 'today'.
+	if ( ! isset( $_REQUEST['pmproeewe_test_date'] ) ) {
+
+		//default: make sure we only run once a day
+		$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
+
+	} else {
+		// Test: Set the date based on received value
+		$test_date = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] );
+		$today     = "{$test_date} 00:00:00";
+	}
+
 	/*
 		Here is where you set how many emails you want to send, how early, and which template files to e-mail.
 		If you set the template file to an empty string '' then it will send the default PMPro expiring e-mail.
@@ -35,90 +98,153 @@ function pmproeewe_extra_emails()
 		(PMPro will fill in the .html for you.)
 	*/
 	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
-					30	=> 'membership_expiring',
-					60	=> 'membership_expiring',
-					90	=> 'membership_expiring'
-				)
-	);		//<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
-	ksort($emails, SORT_NUMERIC);
-	
-	// add admin as Cc recipient?
-	$include_admin = apply_filters( 'pmproeewe_bcc_admin_user', false);
-	
-	if ($include_admin) 
-	{
-		add_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_bcc');
+			30 => 'membership_expiring',
+			60 => 'membership_expiring',
+			90 => 'membership_expiring'
+		)
+	);        //<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
+
+	ksort( $emails, SORT_NUMERIC );
+
+	if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
 	}
-	
+
+	// add admin as Cc recipient?
+	$include_admin = apply_filters( 'pmproeewe_bcc_admin_user', false );
+
+	if ( $include_admin ) {
+		add_filter( 'pmpro_email_headers', 'pmproeewe_add_admin_as_bcc' );
+	}
+
 	//array to store ids of folks we sent emails to so we don't email them twice
 	$sent_emails = array();
 
-	foreach(array_keys($emails) as $days)
-	{
+	foreach ( array_keys( $emails ) as $days ) {
+
+		$meta = "pmpro_expiration_notice_{$days}";
+
+		// use a dummy meta value for tests
+		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 ) {
+			$meta = "pmpro_expiration_test_notice_{$days}";
+		}
+
+		// Configure the interval to select records from
+		if ( is_null( $last ) ) {
+
+			$interval_start = $today;
+		} else {
+
+			$interval_start = date_i18n( 'Y-m-d 00:00:00', strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) ) );
+		}
+
+		$interval_end = date_i18n( 'Y-m-d 00:00:00', strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) ) );
+
+		// Query returns records that fit between the pmproeewe_email_frequency_and_templates day values
+		// and only if they haven't had a warning notice sent already.
 		$sqlQuery = $wpdb->prepare(
-			"SELECT
-				mu.user_id,
-				mu.membership_id,
-				mu.startdate,
-				mu.enddate,
-                um.meta_value notified
-			FROM {$wpdb->pmpro_memberships_users} mu
-            LEFT JOIN {$wpdb->usermeta} um
-            ON um.user_id = mu.user_id
-              	AND um.meta_key = %s
-			WHERE mu.status = 'active'
-				AND mu.enddate IS NOT NULL
-				AND mu.enddate <> '0000-00-00 00:00:00'
-				AND DATE_SUB(mu.enddate, INTERVAL %d DAY) <= %s
-				AND (mu.membership_id <> 0 OR mu.membership_id <> NULL)
-                AND (um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) <= %s)
+			"SELECT DISTINCT
+  				mu.user_id,
+  				mu.membership_id,
+  				mu.startdate,
+ 				mu.enddate,
+ 				um.meta_value AS notice 			  
+ 			FROM {$wpdb->pmpro_memberships_users} AS mu
+ 			  LEFT JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id
+            	AND ( um.meta_key IS NULL OR um.meta_key = %s )
+			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < %s )  
+				AND ( mu.status = 'active' )		   
+ 			    AND ( mu.enddate IS NOT NULL )
+ 			    AND ( mu.enddate <> '0000-00-00 00:00:00' )
+ 			    AND ( mu.enddate BETWEEN %s AND %s )		  
+ 			    AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
 			ORDER BY mu.enddate",
-			"pmpro_expiration_notice_{$days}",
+			$meta,
 			$days,
 			$today,
-			$days,
-			$today
+			$interval_start,
+			$interval_end
 		);
 
-		$expiring_soon = $wpdb->get_results($sqlQuery);
+		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+			error_log( "PMPROEEWE SQL used: {$sqlQuery}" );
+		}
 
-		foreach($expiring_soon as $e)
-		{							
-			if(!in_array($e->user_id, $sent_emails))
-			{
-				//send an email
-				$pmproemail = new PMProEmail();
-				$euser = get_userdata($e->user_id);		
+		$expiring_soon = $wpdb->get_results( $sqlQuery );
 
-				if($euser) {
-					$euser->membership_level = pmpro_getMembershipLevelForUser($euser->ID);
-						
-					$pmproemail->email = $euser->user_email;
-					$pmproemail->subject = sprintf(__("Your membership at %s will end soon", "pmpro"), get_option("blogname"));
-					if(strlen($emails[$days])>0) {
-						$pmproemail->template = $emails[$days];
-					} else {
-						$pmproemail->template = "membership_expiring";
-					}
-					$pmproemail->data = array("subject" => $pmproemail->subject, "name" => $euser->display_name, "user_login" => $euser->user_login, "sitename" => get_option("blogname"), "membership_id" => $euser->membership_level->id, "membership_level_name" => $euser->membership_level->name, "siteemail" => pmpro_getOption("from_email"), "login_link" => wp_login_url(), "enddate" => date(get_option('date_format'), $euser->membership_level->enddate), "display_name" => $euser->display_name, "user_email" => $euser->user_email);			
-			
+		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) ) {
+			error_log( "PMPROEEWE: Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
+		}
+
+		foreach ( $expiring_soon as $e ) {
+
+			//send an email
+			$pmproemail = new PMProEmail();
+			$euser      = get_userdata( $e->user_id );
+
+			if ( $euser ) {
+				$euser->membership_level = pmpro_getMembershipLevelForUser( $euser->ID );
+
+				$pmproemail->email   = $euser->user_email;
+				$pmproemail->subject = sprintf( __( "Your membership at %s will end soon", "pmpro" ), get_option( "blogname" ) );
+				if ( strlen( $emails[ $days ] ) > 0 ) {
+					$pmproemail->template = $emails[ $days ];
+				} else {
+					$pmproemail->template = "membership_expiring";
+				}
+				$pmproemail->data = array(
+					"subject"               => $pmproemail->subject,
+					"name"                  => $euser->display_name,
+					"user_login"            => $euser->user_login,
+					"sitename"              => get_option( "blogname" ),
+					"membership_id"         => $euser->membership_level->id,
+					"membership_level_name" => $euser->membership_level->name,
+					"siteemail"             => pmpro_getOption( "from_email" ),
+					"login_link"            => wp_login_url(),
+					"enddate"               => date_i18n( get_option( 'date_format' ), $euser->membership_level->enddate ),
+					"display_name"          => $euser->display_name,
+					"user_email"            => $euser->user_email
+				);
+
+				// Only actually send the message if we're not testing.
+				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', '__return_true' ) ) {
 					$pmproemail->sendEmail();
-				
-					printf(__("Membership expiring email sent to %s. ", "pmpro"), $euser->user_email);
-				
-					$sent_emails[] = $e->user_id;
+				} else {
+
+					$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
+
+					if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] )  ) {
+						error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+					}
+				}
+
+				if ( WP_DEBUG ) {
+					error_log( sprintf( __( "Membership expiring email sent to %s. ", "pmpro" ), $euser->user_email ) );
+				}
+
+				$sent_emails[] = $e->user_id;
+
+				if ( false == update_user_meta( $e->user_id, $meta, $today ) ) {
+
+					if (WP_DEBUG) {
+						error_log( "Error: Unable to update {$meta} key for {$e->user_id}!" );
+					}
+
+				} else {
+					if ( WP_DEBUG ) {
+						error_log( "Saved {$meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
+					}
 				}
 			}
-				
-			//update user meta so we don't email them again
-			update_user_meta($e->user_id, "pmpro_expiration_notice_" . $days, $today);
 		}
+
+		// To track intervals
+		$last = $days;
 	}
-	
+
 	// remove the filter for admin
-	if ($include_admin) 
-	{
-		remove_filter('pmpro_email_headers', 'pmproeewe_add_admin_as_bcc');
+	if ( $include_admin ) {
+		remove_filter( 'pmpro_email_headers', 'pmproeewe_add_admin_as_bcc' );
 	}
 
 }
@@ -127,26 +253,27 @@ function pmproeewe_extra_emails()
 Filter to add admin as Bcc for messages from this add-on
 */
 function pmproeewe_add_admin_as_bcc( $headers ) {
-	
-	$a_email = get_option('admin_email');
-	$admin = get_user_by('email', $a_email);
-	$headers[] = "Bcc: {$admin->first_name} {$user->last_name} <{$admin->user_email}>";
-	
+
+	$a_email   = get_option( 'admin_email' );
+	$admin     = get_user_by( 'email', $a_email );
+	$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
+
 	return $headers;
 }
 
 /*
 Function to add links to the plugin row meta
 */
-function pmproeewe_plugin_row_meta($links, $file) {
-	if(strpos($file, 'pmpro-extra-expiration-warning-emails.php') !== false)
-	{
+function pmproeewe_plugin_row_meta( $links, $file ) {
+	if ( strpos( $file, 'pmpro-extra-expiration-warning-emails.php' ) !== false ) {
 		$new_links = array(
-			'<a href="' . esc_url('http://www.paidmembershipspro.com/add-ons/plus-add-ons/extra-expiration-warning-emails-add-on/')  . '" title="' . esc_attr( __( 'View Documentation', 'pmpro' ) ) . '">' . __( 'Docs', 'pmpro' ) . '</a>',
-			'<a href="' . esc_url('http://paidmembershipspro.com/support/') . '" title="' . esc_attr( __( 'Visit Customer Support Forum', 'pmpro' ) ) . '">' . __( 'Support', 'pmpro' ) . '</a>',
+			'<a href="' . esc_url( 'http://www.paidmembershipspro.com/add-ons/plus-add-ons/extra-expiration-warning-emails-add-on/' ) . '" title="' . esc_attr( __( 'View Documentation', 'pmpro' ) ) . '">' . __( 'Docs', 'pmpro' ) . '</a>',
+			'<a href="' . esc_url( 'http://paidmembershipspro.com/support/' ) . '" title="' . esc_attr( __( 'Visit Customer Support Forum', 'pmpro' ) ) . '">' . __( 'Support', 'pmpro' ) . '</a>',
 		);
-		$links = array_merge($links, $new_links);
+		$links     = array_merge( $links, $new_links );
 	}
+
 	return $links;
 }
-add_filter('plugin_row_meta', 'pmproeewe_plugin_row_meta', 10, 2);
+
+add_filter( 'plugin_row_meta', 'pmproeewe_plugin_row_meta', 10, 2 );
