@@ -151,10 +151,10 @@ function pmproeewe_extra_emails() {
  				um.meta_value AS notice 			  
  			FROM {$wpdb->pmpro_memberships_users} AS mu
  			  LEFT JOIN {$wpdb->usermeta} AS um ON um.user_id = mu.user_id
-            	AND ( um.meta_key IS NULL OR um.meta_key = %s )
-			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < %s )  
-				AND ( mu.status = 'active' )		   
- 			    AND ( mu.enddate IS NOT NULL )
+            	AND ( ( um.meta_key IS NULL OR um.meta_key = %s )
+			AND ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < %s ) )
+            WHERE ( mu.status = 'active' )
+				AND ( mu.enddate IS NOT NULL )
  			    AND ( mu.enddate <> '0000-00-00 00:00:00' )
  			    AND ( mu.enddate BETWEEN %s AND %s )		  
  			    AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
