@@ -62,7 +62,7 @@ function pmproeewe_cleanup_test() {
 
 	foreach ( $emails as $days => $template ) {
 
-		$meta = $meta = "pmpro_expiration_test_notice_{$days}";
+		$meta = "pmpro_expiration_test_notice_{$days}";
 		$wpdb->delete( $wpdb->usermeta, array( 'meta_key' => $meta ) );
 	}
 }
