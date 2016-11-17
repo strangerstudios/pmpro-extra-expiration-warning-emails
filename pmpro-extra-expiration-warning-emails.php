@@ -207,7 +207,7 @@ function pmproeewe_extra_emails() {
 				);
 
 				// Only actually send the message if we're not testing.
-				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', '__return_true' ) ) {
+				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true ) ) {
 					$pmproemail->sendEmail();
 				} else {
 
