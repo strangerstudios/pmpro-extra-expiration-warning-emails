@@ -3,7 +3,7 @@
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: http://www.paidmembershipspro.com/wp/pmpro-extra-expiration-warning-emails/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
-Version: .3.7
+Version: .3.7.1
 Author: Stranger Studios
 Author URI: http://www.strangerstudios.com
 */
@@ -207,7 +207,7 @@ function pmproeewe_extra_emails() {
 				);
 
 				// Only actually send the message if we're not testing.
-				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', '__return_true' ) ) {
+				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true ) ) {
 					$pmproemail->sendEmail();
 				} else {
 
