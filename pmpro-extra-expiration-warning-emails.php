@@ -77,13 +77,12 @@ function pmproeewe_extra_emails() {
 
 	$last = null;
 
+	//default: make sure we only run once a day
+	$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
+
 	// Allow test environment to determine the value of 'today'.
-	if ( ! isset( $_REQUEST['pmproeewe_test_date'] ) && current_user_can( 'manage_options' ) ) {
+	if ( isset( $_REQUEST['pmproeewe_test_date'] ) && current_user_can( 'manage_options' ) ) {
 
-		//default: make sure we only run once a day
-		$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
-
-	} else {
 		// Test: Set the date based on received value
 		$test_date = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] );
 		$today     = "{$test_date} 00:00:00";
