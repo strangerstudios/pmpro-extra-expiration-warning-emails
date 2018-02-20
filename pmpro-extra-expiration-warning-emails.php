@@ -89,14 +89,24 @@ function pmproeewe_extra_emails() {
 		$today     = "{$test_date} 00:00:00";
 	}
 	
-	/*
-		Here is where you set how many emails you want to send, how early, and which template files to e-mail.
-		If you set the template file to an empty string '' then it will send the default PMPro expiring e-mail.
-		Place your email templates in a subfolder of your active theme. Create a paid-memberships-pro folder in your theme folder,
-		and then create an email folder within that. Your template files should have a suffix of .html, but you don't put it below. So if you
-		create a file in there called myexpirationemail.html, then you'd just put 'myexpirationemail' in the array below.
-		(PMPro will fill in the .html for you.)
-	*/
+	/**
+	 * DO NOT edit this add-on!
+	 *
+	 * The 'pmproeewe_email_frequency_and_templates' filter is used to configure how many emails
+	 * you want to send, how early, and which template files to use for the email messages. The
+	 * filter handler should be added in a customization plugin.
+	 *
+	 * If you set the template file to an empty string '' then it will send the default PMPro expiring e-mail.
+	 *
+	 * Place your email templates in a subfolder of your active theme. Create a paid-memberships-pro folder
+	 * in your theme folder, and then create an email folder within that. Your template files should have
+	 * a suffix of .html, but you don't put it below. '
+	 *
+	 * If you create a file in there called myexpirationemail.html, then you'd just put 'myexpirationemail'
+	 * in the array below.
+	 *
+	 * (PMPro will fill in the .html for you.)
+	 */
 	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
 			30 => 'membership_expiring',
 			60 => 'membership_expiring',
@@ -188,7 +198,8 @@ function pmproeewe_extra_emails() {
 			$pmproemail = new PMProEmail();
 			$euser      = get_userdata( $e->user_id );
 			
-			if ( $euser ) {
+			if ( !empty( $euser ) ) {
+				
 				$euser->membership_level = pmpro_getMembershipLevelForUser( $euser->ID );
 				
 				$pmproemail->email   = $euser->user_email;
@@ -229,7 +240,7 @@ function pmproeewe_extra_emails() {
 				}
 				
 				if ( WP_DEBUG ) {
-					error_log( sprintf("(Fake) Membership expiring email sent to %s. ", "pmpro" ), $euser->user_email );
+					error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
 				}
 				
 				$sent_emails[] = $e->user_id;
@@ -263,6 +274,48 @@ function pmproeewe_extra_emails() {
 	
 }
 
+function pmproeewe_cleanup() {
+	
+	global $wpdb;
+	
+	$cleanup = get_option( 'pmproeewe_cleanup', false );
+	
+	if ( ! empty( $cleanup) ) {
+		if ( WP_DEBUG ) {
+			error_log( "No bad record cleanup needed: {$cleanup}");
+		}
+		return;
+	}
+	
+	$sql = "SELECT umeta_id
+				FROM {$wpdb->usermeta}
+				WHERE meta_key LIKE 'pmpro_expiration_notice%%'
+				AND meta_value = ' 00:00:00'";
+	
+	$id_list = $wpdb->get_col( $sql );
+	
+	if ( empty( $id_list ) ) {
+		if ( WP_DEBUG ) {
+			error_log( "Nothing to clean up!" );
+		}
+		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
+		return;
+	}
+	
+	$in_list = implode( ',', array_map( 'intval', $id_list ) );
+	
+	if ( WP_DEBUG ) {
+		error_log( "Will clean up " . count($id_list ) . " bad PMPro EEWE records" );
+	}
+	
+	$result = $wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE umeta_id IN ({$in_list})" );
+	
+	if ( false !== $result ) {
+		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
+	}
+}
+
+add_action( 'init', 'pmproeewe_cleanup', 99 );
 /*
 Filter to add admin as Bcc for messages from this add-on
 */
