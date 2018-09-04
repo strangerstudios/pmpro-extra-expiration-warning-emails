@@ -2,7 +2,7 @@
 Contributors: strangerstudios
 Tags: pmpro, paid memberships pro, members, expiration, email, member communication
 Requires at least: 4
-Tested up to: 4.9.7
+Tested up to: 4.9.8
 Stable tag: .4
 
 Send more than one customized "membership expiration warning" email to users with PMPro.
@@ -28,6 +28,8 @@ Please visit our premium support site at http://www.paidmembershipspro.com for m
 
 == Changelog ==
 = .4 =
+* BUG FIX: Would sometimes allow the run date/time to be incorrectly formatted.
+* BUG FIX: Would sometimes save the wrong date in user meta, leading to extra emails being sent out.
 * BUG FIX/ENHANCEMENT: If running a current version of PMPro, will use the pmpro_cleanup_memberships_users_table() function before finding expiring emails to avoid certain issues caused by errors in the memberships_users table.
 
 = .3.7 =
