@@ -77,16 +77,16 @@ function pmproeewe_extra_emails() {
 
 	$last = null;
 
-	//clean up errors in the memberships_users table that could cause problems
+	//default: make sure we only run once a day
+	$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
+
+  //clean up errors in the memberships_users table that could cause problems
 	if( function_exists( 'pmpro_cleanup_memberships_users_table' ) ) {
 		pmpro_cleanup_memberships_users_table();
 	}
 
 	// Allow test environment to determine the value of 'today'.
 	if ( ! isset( $_REQUEST['pmproeewe_test_date'] ) && current_user_can( 'manage_options' ) ) {
-		$today = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
-
-	} else {
 		// Test: Set the date based on received value
 		$test_date = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] );
 		$today     = "{$test_date} 00:00:00";
