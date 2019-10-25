@@ -204,7 +204,19 @@ function pmproeewe_extra_emails() {
 			
 			if ( !empty( $euser ) ) {
 				
-				$euser->membership_level = pmpro_getMembershipLevelForUser( $euser->ID );
+				if(pmprommpu_is_loaded()) {
+					$userlevels = pmpro_getMembershipLevelsForUser( $euser->ID );
+					foreach($userlevels as $curlevel) {
+						if($curlevel->id == $e->membership_id) {
+							$euser->membership_level = $curlevel;
+						}
+					}
+					if(empty($euser->membership_level) && !empty($userlevels)) { // didn't find this level, but they have one? Use it.
+						$euser->membership_level = $userlevels[0];
+					}
+				} else {
+					$euser->membership_level = pmpro_getMembershipLevelForUser( $euser->ID );
+				}
 				
 				$pmproemail->email   = $euser->user_email;
 				$pmproemail->subject = sprintf( __( "Your membership at %s will end soon", "pmpro" ), get_option( "blogname" ) );
