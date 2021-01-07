@@ -229,25 +229,27 @@ function pmproeewe_extra_emails() {
 					"display_name"          => $euser->display_name,
 					"user_email"            => $euser->user_email,
 				);
-				
-				// Only actually send the message if we're not testing.
-				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true ) ) {
-					$pmproemail->sendEmail();
-				} else {
-					
-					// Running a test exectution
-					$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
-					
-					if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
-						error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+
+				if ( ! in_array( $e->user_id, $sent_emails ) ) {
+					// Only actually send the message if we're not testing.
+					if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true ) ) {
+						$pmproemail->sendEmail();
+					} else {
+						
+						// Running a test exectution
+						$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
+						
+						if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
+							error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+						}
 					}
+					
+					if ( WP_DEBUG ) {
+						error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
+					}
+					
+					$sent_emails[] = $e->user_id;
 				}
-				
-				if ( WP_DEBUG ) {
-					error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
-				}
-				
-				$sent_emails[] = $e->user_id;
 				
 				//delete any old user meta using this key just in case
 				delete_user_meta( $e->user_id, $meta );
