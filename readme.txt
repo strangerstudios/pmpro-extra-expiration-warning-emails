@@ -1,8 +1,8 @@
 === Paid Memberships Pro - Extra Expiration Warning Emails Add On ===
 Contributors: strangerstudios
 Tags: pmpro, paid memberships pro, members, expiration, email, member communication
-Requires at least: 4
-Tested up to: 4.9.8
+Requires at least: 5.2
+Tested up to: 5.9
 Stable tag: .4
 
 Send more than one customized "membership expiration warning" email to users with PMPro.
