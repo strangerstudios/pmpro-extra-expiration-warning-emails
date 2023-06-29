@@ -223,7 +223,7 @@ function pmproeewe_extra_emails() {
 					"sitename"              => get_option( "blogname" ),
 					"membership_id"         => $euser->membership_level->id,
 					"membership_level_name" => $euser->membership_level->name,
-					"siteemail"             => pmpro_getOption( "from_email" ),
+					"siteemail"             => get_option( 'pmpro_from_email' ),
 					"login_link"            => wp_login_url(),
 					"enddate"               => date_i18n( get_option( 'date_format' ), $euser->membership_level->enddate ),
 					"display_name"          => $euser->display_name,
