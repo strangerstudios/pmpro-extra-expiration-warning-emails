@@ -18,6 +18,10 @@ add_action( "pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30 );
  * Trigger execution of test version for the plugin.
  */
 function pmproeewe_test() {
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
 		
@@ -47,24 +51,8 @@ function pmproeewe_test() {
 add_action( 'init', 'pmproeewe_test' );
 
 function pmproeewe_cleanup_test() {
-	
 	global $wpdb;
-	
-	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
-			30 => 'membership_expiring',
-			60 => 'membership_expiring',
-			90 => 'membership_expiring',
-		)
-	);
-	
-	// Sort the received array in numeric order
-	ksort( $emails, SORT_NUMERIC );
-	
-	foreach ( $emails as $days => $template ) {
-		
-		$meta = "pmpro_expiration_test_notice_{$days}";
-		$wpdb->delete( $wpdb->usermeta, array( 'meta_key' => $meta ) );
-	}
+	$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%'" );
 }
 
 /*
@@ -119,6 +107,11 @@ function pmproeewe_extra_emails() {
 	);        //<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	
 	ksort( $emails, SORT_NUMERIC );
+
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
@@ -280,6 +273,11 @@ function pmproeewe_extra_emails() {
 function pmproeewe_cleanup() {
 	
 	global $wpdb;
+
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	$cleanup = get_option( 'pmproeewe_cleanup', false );
 	
