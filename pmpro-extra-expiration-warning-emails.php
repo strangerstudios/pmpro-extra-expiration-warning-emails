@@ -43,7 +43,7 @@ function pmproeewe_test() {
 		}
 		
 		// Clean up after the test.
-		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmproewee_expiration_test_notice_%'" );
 	}
 }
 
@@ -126,11 +126,11 @@ function pmproeewe_extra_emails() {
 	
 	foreach ( $emails as $days => $email_template ) {
 		
-		$meta = "pmpro_expiration_notice_";
+		$meta = "pmproewee_expiration_notice_";
 		
 		// use a dummy meta value for tests
 		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
-			$meta = "pmpro_expiration_test_notice_";
+			$meta = "pmproewee_expiration_test_notice_";
 		}
 		
 		$start_ts = strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) );
@@ -269,53 +269,26 @@ function pmproeewe_extra_emails() {
 add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
 
 /**
- * Cleans up old data after updating to new versions.
+ * Fix data after updating to new versions.
  *
  * @since TBD
  */
-function pmproeewe_cleanup() {
-	
+function pmproeewe_check_for_upgrades() {
 	global $wpdb;
 
-	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
-	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
-		define( 'PMPROEEWE_DEBUG_LOG', false );
-	}
-	
-	$cleanup = get_option( 'pmproeewe_cleanup', false );
-	
-	if ( ! empty( $cleanup) ) {
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-			error_log( "No bad record cleanup needed: {$cleanup}");
-		}
-		return;
-	}
-	
-	$sql = "SELECT umeta_id
-				FROM {$wpdb->usermeta}
-				WHERE meta_key LIKE 'pmpro_expiration_notice%%'
-				AND meta_value = ' 00:00:00'";
-	
-	$id_list = $wpdb->get_col( $sql );
-	
-	if ( empty( $id_list ) ) {
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-			error_log( "Nothing to clean up!" );
-		}
-		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
-		return;
-	}
-	
-	$in_list = implode( ',', array_map( 'intval', $id_list ) );
-	
-	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-		error_log( "Will clean up " . count($id_list ) . " bad PMPro EEWE records" );
-	}
-	
-	$result = $wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE umeta_id IN ({$in_list})" );
-	
-	if ( false !== $result ) {
-		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
+	$pmproeewe_db_version = get_option( 'pmproewee_db_version', 0 );
+
+	// Check if upgrading to v1.0.
+	if ( $pmproewee_db_version < 1.0 ) {
+		// Remove old option to track db version.
+		delete_option( 'pmproeewe_cleanup' );
+
+		// Delete all user meta beginning with pmpro_expiration_test_notice_
+		// or pmpro_expiration_notice_ to start with a clean slate.
+		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%' OR meta_key LIKE 'pmpro_expiration_notice_%'" );
+
+		// Update the db version.
+		update_option( 'pmproewee_db_version', 1.0 );
 	}
 }
 add_action( 'init', 'pmproeewe_cleanup', 99 );
