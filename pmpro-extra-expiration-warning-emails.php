@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
-Plugin URI: http://www.paidmembershipspro.com/wp/pmpro-extra-expiration-warning-emails/
+Plugin URI: https://www.paidmembershipspro.com/add-ons/extra-expiration-warning-emails-add-on/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
 Version: .4
-Author: Stranger Studios
-Author URI: http://www.strangerstudios.com
+Author: Paid Memberships Pro
+Author URI: https://www.paidmembershipspro.com
 */
 
 //first, disable the default email
@@ -24,19 +24,19 @@ function pmproeewe_test() {
 		// Force the system to _not_ send out emails
 		add_filter( 'pmproeewe_send_reminder_to_user', '__return_false', 999 );
 		
-		if ( WP_DEBUG ) {
-			error_log( "PMPROEEWE: Running expiration fuctionality" );
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
+			error_log( "PMPROEEWE: Running expiration functionality" );
 		}
 		
 		pmproeewe_extra_emails();
 		
-		if ( WP_DEBUG ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 			error_log( "PMPROEEWE: Running the expiration functionality again (expecting no records found)" );
 		}
 		
 		pmproeewe_extra_emails();
 		
-		if ( WP_DEBUG ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 			error_log( "PMPROEEWE: Cleaning up after the test" );
 		}
 		
@@ -120,7 +120,7 @@ function pmproeewe_extra_emails() {
 	
 	ksort( $emails, SORT_NUMERIC );
 	
-	if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
+	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
 	}
 	
@@ -185,13 +185,13 @@ function pmproeewe_extra_emails() {
 			$interval_end
 		);
 		
-		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 			error_log( "PMPROEEWE SQL used: {$sqlQuery}" );
 		}
 		
 		$expiring_soon = $wpdb->get_results( $sqlQuery );
 		
-		if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 			error_log( "PMPROEEWE: Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
 		}
 		
@@ -222,7 +222,7 @@ function pmproeewe_extra_emails() {
 					"sitename"              => get_option( "blogname" ),
 					"membership_id"         => $euser->membership_level->id,
 					"membership_level_name" => $euser->membership_level->name,
-					"siteemail"             => pmpro_getOption( "from_email" ),
+					"siteemail"             => get_option( 'pmpro_from_email' ),
 					"login_link"            => wp_login_url(),
 					"enddate"               => date_i18n( get_option( 'date_format' ), $euser->membership_level->enddate ),
 					"display_name"          => $euser->display_name,
@@ -230,19 +230,19 @@ function pmproeewe_extra_emails() {
 				);
 				
 				// Only actually send the message if we're not testing.
-				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true ) ) {
+				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true, $euser ) ) {
 					$pmproemail->sendEmail();
 				} else {
 					
 					// Running a test exectution
 					$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
 					
-					if ( WP_DEBUG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
+					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 						error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
 					}
 				}
 				
-				if ( WP_DEBUG ) {
+				if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 					error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
 				}
 				
@@ -255,12 +255,12 @@ function pmproeewe_extra_emails() {
 				//update user meta to track that we sent notice
 				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
 					
-					if ( WP_DEBUG ) {
+					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 						error_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
 					}
 					
 				} else {
-					if ( WP_DEBUG ) {
+					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 						error_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
 					}
 				}
@@ -285,7 +285,7 @@ function pmproeewe_cleanup() {
 	$cleanup = get_option( 'pmproeewe_cleanup', false );
 	
 	if ( ! empty( $cleanup) ) {
-		if ( WP_DEBUG ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 			error_log( "No bad record cleanup needed: {$cleanup}");
 		}
 		return;
@@ -299,7 +299,7 @@ function pmproeewe_cleanup() {
 	$id_list = $wpdb->get_col( $sql );
 	
 	if ( empty( $id_list ) ) {
-		if ( WP_DEBUG ) {
+		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 			error_log( "Nothing to clean up!" );
 		}
 		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
@@ -308,7 +308,7 @@ function pmproeewe_cleanup() {
 	
 	$in_list = implode( ',', array_map( 'intval', $id_list ) );
 	
-	if ( WP_DEBUG ) {
+	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 		error_log( "Will clean up " . count($id_list ) . " bad PMPro EEWE records" );
 	}
 	
