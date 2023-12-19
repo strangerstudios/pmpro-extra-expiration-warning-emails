@@ -180,7 +180,6 @@ function pmproeewe_extra_emails() {
 			ORDER BY mu.enddate",
 			$meta,
 			$days,
-			//$today,
 			$interval_start,
 			$interval_end
 		);
