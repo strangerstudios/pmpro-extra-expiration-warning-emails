@@ -21,7 +21,7 @@ function pmproeewe_test() {
 		define( 'PMPROEEWE_DEBUG_LOG', false );
 	}
 	
-	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
+	if ( pmproeewe_is_test() ) {
 		
 		// Force the system to _not_ send out emails
 		add_filter( 'pmproeewe_send_reminder_to_user', '__return_false', 999 );
@@ -59,23 +59,10 @@ function pmproeewe_extra_emails() {
 
 	// Unhook the core expiration warning email function.
 	remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
-	
-	$last = null;
-	
-	//Default: make sure we only run once per day
-	$today          = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
-	$interval_start = $today;
-	
-  //clean up errors in the memberships_users table that could cause problems
+
+	// Clean up errors in the memberships_users table that could cause problems.
 	if( function_exists( 'pmpro_cleanup_memberships_users_table' ) ) {
 		pmpro_cleanup_memberships_users_table();
-	}
-  
-	// Allow test environment to set the value of 'today'.
-	if ( isset( $_REQUEST['pmproeewe_test_date'] ) && current_user_can( 'manage_options' ) ) {
-		// Test: Set the date based on received value
-		$test_date = isset( $_REQUEST['pmproeewe_test_date'] ) ? sanitize_text_field( $_REQUEST['pmproeewe_test_date'] ) : date( 'Y-m-d', current_time( 'timestamp' ) );
-		$today     = "{$test_date} 00:00:00";
 	}
 	
 	/**
@@ -95,6 +82,10 @@ function pmproeewe_extra_emails() {
 	 * in the array below.
 	 *
 	 * (PMPro will fill in the .html for you.)
+	 *
+	 * @since TBD
+	 *
+	 * @param array $emails An array of days and template files to use for the emails.
 	 */
 	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
 			30 => 'membership_expiring',
@@ -102,7 +93,6 @@ function pmproeewe_extra_emails() {
 			90 => 'membership_expiring',
 		)
 	);        //<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
-	
 	ksort( $emails, SORT_NUMERIC );
 
 	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
@@ -114,42 +104,33 @@ function pmproeewe_extra_emails() {
 		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
 	}
 	
-	// add admin as Cc recipient?
-	$include_admin = apply_filters( 'pmproeewe_bcc_admin_user', false );
-	
-	if ( $include_admin ) {
+	/**
+	 * Allow the admin to be Bcc'd on all emails sent by this add-on.
+	 *
+	 * @since TBD
+	 *
+	 * @param bool $bcc_admin true to Bcc the admin, false otherwise.
+	 */
+	$bcc_admin = apply_filters( 'pmproeewe_bcc_admin_user', false );
+	if ( $bcc_admin ) {
 		add_filter( 'pmpro_email_headers', 'pmproeewe_add_admin_as_bcc' );
 	}
+
+	// Use a dummy meta value for tests.
+	$meta = pmproeewe_is_test() ? 'pmproewee_expiration_test_notice_' : 'pmproewee_expiration_notice_';
+
+	// Get the current date/time.
+	$today = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
+
+	// Allow test environment to set the value of 'today'.
+	if ( pmproeewe_is_test() && isset( $_REQUEST['pmproeewe_test_date'] ) ) {
+		$today = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] ) . ' 00:00:00';
+	}
 	
-	//array to store ids of folks we sent emails to so we don't email them twice
-	$sent_emails = array();
+	// Set starting values for loop.
+	$last = 0; // The previous $days value that we sent emails for.
 	
-	foreach ( $emails as $days => $email_template ) {
-		
-		$meta = "pmproewee_expiration_notice_";
-		
-		// use a dummy meta value for tests
-		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
-			$meta = "pmproewee_expiration_test_notice_";
-		}
-		
-		$start_ts = strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) );
-		
-		// Have a valid start timestamp (skip if we're going through the loop for the 1st time)
-		if ( ! empty( $start_ts ) && ! is_null( $last ) ) {
-			
-			$interval_start = date_i18n( 'Y-m-d 00:00:00', $start_ts );
-		}
-		
-		$interval_end_ts = strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) );
-		
-		// Have an appropriate end timestamp?
-		if ( empty( $interval_end_ts ) ) {
-			continue;
-		}
-		
-		$interval_end = date_i18n( 'Y-m-d 00:00:00', $interval_end_ts );
-		
+	foreach ( $emails as $days => $email_template ) {	
 		// Query returns records that fit between the pmproeewe_email_frequency_and_templates day values
 		// and only if they haven't had a warning notice sent already.
 		$sqlQuery = $wpdb->prepare(
@@ -170,8 +151,8 @@ function pmproeewe_extra_emails() {
 			ORDER BY mu.enddate",
 			$meta,
 			$days,
-			$interval_start,
-			$interval_end
+			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) ) ), // Start date to being looking for expiring memberhsips.
+			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) ) ) // End date to stop looking for expiring memberships.
 		);
 		
 		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
@@ -190,7 +171,7 @@ function pmproeewe_extra_emails() {
 			$pmproemail = new PMProEmail();
 			$euser      = get_userdata( $e->user_id );
 			
-			if ( !empty( $euser ) ) {
+			if ( ! empty( $euser ) ) {
 				
 				$euser->membership_level = pmpro_getSpecificMembershipLevelForUser( $euser->ID, $e->membership_id );
 				
@@ -198,7 +179,7 @@ function pmproeewe_extra_emails() {
 				$pmproemail->subject = sprintf( __( "Your membership at %s will end soon", "pmpro" ), get_option( "blogname" ) );
 				
 				// The user specified a template name to use
-				if ( !empty( $email_template ) ) {
+				if ( ! empty( $email_template ) ) {
 					$pmproemail->template = $email_template;
 				} else {
 					$pmproemail->template = "membership_expiring";
@@ -219,29 +200,22 @@ function pmproeewe_extra_emails() {
 				);
 				
 				// Only actually send the message if we're not testing.
-				if ( true === apply_filters( 'pmproeewe_send_reminder_to_user', true, $euser ) ) {
-					$pmproemail->sendEmail();
-				} else {
-					
-					// Running a test exectution
-					$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
-					
-					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
-						error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+				if ( apply_filters( 'pmproeewe_send_reminder_to_user', true, $euser ) ) {
+					if ( ! pmproeewe_is_test() ) {
+						$pmproemail->sendEmail();
+					} else {
+						if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
+							$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
+							error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+						}
+					}
+					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
+						error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
 					}
 				}
-				
-				if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-					error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
-				}
-				
-				$sent_emails[] = $e->user_id;
-				
-				//delete any old user meta using this key just in case
+
+				// Update user meta to track that we sent notice.
 				$full_meta = $meta . $e->membership_id;
-				delete_user_meta( $e->user_id, $full_meta );
-				
-				//update user meta to track that we sent notice
 				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
 					
 					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
@@ -256,17 +230,28 @@ function pmproeewe_extra_emails() {
 			}
 		}
 		
-		// To track intervals
+		// To track intervals.
 		$last = $days;
 	}
 	
 	// remove the filter for admin
-	if ( $include_admin ) {
+	if ( $bcc_admin ) {
 		remove_filter( 'pmpro_email_headers', 'pmproeewe_add_admin_as_bcc' );
 	}
 	
 }
 add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
+
+/**
+ * Helper function to determine whether a test is being run.
+ *
+ * @since TBD
+ *
+ * @return bool true if a test is being run, false otherwise.
+ */
+function pmproeewe_is_test() {
+	return ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) );
+}
 
 /**
  * Fix data after updating to new versions.
