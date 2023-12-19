@@ -8,6 +8,8 @@ Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 */
 
+define( 'PMPROEEWE_DIR', plugin_dir_path( __FILE__ ) );
+
 /**
  * Trigger a test run of this plugin.
  *
@@ -15,32 +17,19 @@ Author URI: https://www.paidmembershipspro.com
  */
 function pmproeewe_test() {
 	global $wpdb;
-
-	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
-	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
-		define( 'PMPROEEWE_DEBUG_LOG', false );
-	}
 	
 	if ( pmproeewe_is_test() ) {
-		
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-			error_log( "PMPROEEWE: Running expiration functionality" );
-		}
-		
+		pmproeewe_log( "TEST: Running expiration functionality" );
 		pmproeewe_extra_emails();
-		
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-			error_log( "PMPROEEWE: Running the expiration functionality again (expecting no records found)" );
-		}
-		
+		pmproeewe_log( "TEST: Running the expiration functionality again (expecting no records found)" );
 		pmproeewe_extra_emails();
-		
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-			error_log( "PMPROEEWE: Cleaning up after the test" );
-		}
+		pmproeewe_log( "TEST: Cleaning up after the test" );
 		
 		// Clean up after the test.
 		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmproewee_expiration_test_notice_%'" );
+
+		// Output the log.
+		pmproeewe_output_log();
 	}
 }
 
@@ -91,15 +80,7 @@ function pmproeewe_extra_emails() {
 		)
 	);        //<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	ksort( $emails, SORT_NUMERIC );
-
-	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
-	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
-		define( 'PMPROEEWE_DEBUG_LOG', false );
-	}
-	
-	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
-		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
-	}
+	pmproeewe_log( "Template array: " . print_r( $emails, true ) );
 	
 	/**
 	 * Allow the admin to be Bcc'd on all emails sent by this add-on.
@@ -118,14 +99,13 @@ function pmproeewe_extra_emails() {
 
 	// Get the current date/time.
 	$today = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
-
 	// Allow test environment to set the value of 'today'.
 	if ( pmproeewe_is_test() && isset( $_REQUEST['pmproeewe_test_date'] ) ) {
 		$today = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] ) . ' 00:00:00';
 	}
 	
-	// Set starting values for loop.
-	$last = 0; // The previous $days value that we sent emails for.
+	// The previous $days value that we sent emails for.
+	$last = 0;
 	
 	foreach ( $emails as $days => $email_template ) {	
 		// Query returns records that fit between the pmproeewe_email_frequency_and_templates day values
@@ -151,16 +131,14 @@ function pmproeewe_extra_emails() {
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) ) ), // Start date to being looking for expiring memberhsips.
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) ) ) // End date to stop looking for expiring memberships.
 		);
-		
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
-			error_log( "PMPROEEWE SQL used: {$sqlQuery}" );
+		// Allow setting a limit on the number of records to process.
+		if ( defined( 'PMPRO_CRON_LIMIT' ) ) {
+			$sqlQuery .= " LIMIT " . PMPRO_CRON_LIMIT;
 		}
+		pmproeewe_log( "SQL used: {$sqlQuery}" );
 		
 		$expiring_soon = $wpdb->get_results( $sqlQuery );
-		
-		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
-			error_log( "PMPROEEWE: Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
-		}
+		pmproeewe_log( "Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
 		
 		foreach ( $expiring_soon as $e ) {
 			
@@ -201,28 +179,18 @@ function pmproeewe_extra_emails() {
 					if ( ! pmproeewe_is_test() ) {
 						$pmproemail->sendEmail();
 					} else {
-						if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-							$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
-							error_log( "PMPROEEWE: Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
-						}
+						$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
+						pmproeewe_log( "Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
 					}
-					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-						error_log( sprintf("(Fake) Membership expiring email sent to %s. ",  $euser->user_email ) );
-					}
+					pmproeewe_log( sprintf("Membership expiring email sent to %s. ",  $euser->user_email ) );
 				}
 
 				// Update user meta to track that we sent notice.
 				$full_meta = $meta . $e->membership_id;
 				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
-					
-					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-						error_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
-					}
-					
+					pmproeewe_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
 				} else {
-					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-						error_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
-					}
+					pmproeewe_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
 				}
 			}
 		}
@@ -235,7 +203,11 @@ function pmproeewe_extra_emails() {
 	if ( $bcc_admin ) {
 		remove_filter( 'pmpro_email_headers', 'pmproeewe_add_admin_as_bcc' );
 	}
-	
+
+	// If we're not testing, output the log.
+	if ( ! pmproeewe_is_test() ) {
+		pmproeewe_output_log();
+	}
 }
 add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
 
@@ -273,7 +245,7 @@ function pmproeewe_check_for_upgrades() {
 		update_option( 'pmproeewe_db_version', 1.0 );
 	}
 }
-add_action( 'init', 'pmproeewe_cleanup', 99 );
+add_action( 'init', 'pmproeewe_check_for_upgrades', 99 );
 
 /*
  * Filter to add admin as Bcc for messages from this add-on.
@@ -286,6 +258,43 @@ function pmproeewe_add_admin_as_bcc( $headers ) {
 	$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
 	
 	return $headers;
+}
+
+/**
+ * Add a log entry to the PMProEWEE log.
+ *
+ * @since TBD
+ *
+ * @param string $message The message to log.
+ */
+function pmproeewe_log( $message ) {
+	global $pmproewee_logstr;
+	$pmproewee_logstr .= "\t" . $message . "\n";
+}
+
+/**
+ * Output the PMProEWEE log to an email or log file
+ * depending on the value of the PMPROEEWE_DEBUG constant.
+ *
+ * @since TBD
+ */
+function pmproeewe_output_log() {
+	global $pmproewee_logstr;
+
+	$pmproewee_logstr = "Logged On: " . date_i18n("m/d/Y H:i:s") . "\n" . $pmproewee_logstr . "\n-------------\n";
+
+	//log in file or email?
+	if ( defined( 'PMPROEEWE_DEBUG' ) && PMPROEEWE_DEBUG === 'log' ) {
+		// Output to log file.
+		$logfile = apply_filters( 'pmproeewe_logfile', PMPROEEWE_DIR . '/logs/pmproeewe.txt' );
+		$loghandle = fopen( $logfile, "a+" );
+		fwrite( $loghandle, $pmproewee_logstr );
+		fclose( $loghandle );
+	} elseif ( defined( 'PMPROEEWE_DEBUG' ) && false !== PMPROEEWE_DEBUG ) {
+		// Send via email.
+		$log_email = strpos( PMPROEEWE_DEBUG, '@' ) ? PMPROEEWE_DEBUG : get_option( 'admin_email' );
+		wp_mail( $log_email, get_option( 'blogname' ) . ' PMPro EEWE Debug Log', nl2br( esc_html( $pmproewee_logstr ) ) );
+	}
 }
 
 /*
