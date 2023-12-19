@@ -6,9 +6,19 @@ Description: Send out more than one "membership expiration warning" email to use
 Version: .4
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
+Text Domain: pmpro-extra-expiration-warning-emails
+Domain Path: /languages
 */
 
 define( 'PMPROEEWE_DIR', plugin_dir_path( __FILE__ ) );
+
+/**
+ * Load the languages folder for translations.
+ */
+function pmproeewe_load_plugin_text_domain() {
+	load_plugin_textdomain( 'pmpro-extra-expiration-warning-emails', false, basename( dirname( __FILE__ ) ) . '/languages' );
+}
+add_action( 'plugins_loaded', 'pmproeewe_load_plugin_text_domain' );
 
 /**
  * Trigger a test run of this plugin.
@@ -122,9 +132,9 @@ function pmproeewe_extra_emails() {
 			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < mu.enddate )  
 				AND ( mu.status = 'active' )
 				AND ( mu.enddate IS NOT NULL )
- 			    AND ( mu.enddate <> '0000-00-00 00:00:00' )
- 			    AND ( mu.enddate BETWEEN %s AND %s )
- 			    AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
+ 				AND ( mu.enddate <> '0000-00-00 00:00:00' )
+ 				AND ( mu.enddate BETWEEN %s AND %s )
+ 				AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
 			ORDER BY mu.enddate",
 			$meta,
 			$days,
@@ -151,7 +161,7 @@ function pmproeewe_extra_emails() {
 				$euser->membership_level = pmpro_getSpecificMembershipLevelForUser( $euser->ID, $e->membership_id );
 				
 				$pmproemail->email   = $euser->user_email;
-				$pmproemail->subject = sprintf( __( "Your membership at %s will end soon", "pmpro" ), get_option( "blogname" ) );
+				$pmproemail->subject = sprintf( __( 'Your membership at %s will end soon', 'pmpro-extra-expiration-warning-emails' ), get_option( 'blogname' ) );
 				
 				// The user specified a template name to use
 				if ( ! empty( $email_template ) ) {
