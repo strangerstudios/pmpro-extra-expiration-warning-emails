@@ -63,7 +63,7 @@ function pmproeewe_extra_emails() {
 	$last = null;
 	
 	//Default: make sure we only run once per day
-	$today          = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
+	$today          = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
 	$interval_start = $today;
 	
   //clean up errors in the memberships_users table that could cause problems
