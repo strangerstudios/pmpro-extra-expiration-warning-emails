@@ -8,16 +8,14 @@ Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 */
 
-//first, disable the default email
-add_filter( "pmpro_send_expiration_warning_email", "__return_false" );
-
-//now add our new function to run on crons
-add_action( "pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30 );
-
 /**
- * Trigger execution of test version for the plugin.
+ * Trigger a test run of this plugin.
+ *
+ * @since TBD
  */
 function pmproeewe_test() {
+	global $wpdb;
+
 	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
 	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
 		define( 'PMPROEEWE_DEBUG_LOG', false );
@@ -44,26 +42,25 @@ function pmproeewe_test() {
 			error_log( "PMPROEEWE: Cleaning up after the test" );
 		}
 		
-		pmproeewe_cleanup_test();
+		// Clean up after the test.
+		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%'" );
 	}
 }
 
 add_action( 'init', 'pmproeewe_test' );
 
-function pmproeewe_cleanup_test() {
-	global $wpdb;
-	$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%'" );
-}
-
 /*
-	New expiration email function.
-	Set the $emails array to include the days you want to send warning emails.
-	e.g. array(30,60,90) sends emails 30, 60, and 90 days before expiration.
-*/
+ * Send the extra expiration warning emails.
+ *
+ * @since TBD
+ */
 function pmproeewe_extra_emails() {
 	global $wpdb;
+
+	// Unhook the core expiration warning email function.
+	remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
 	
-	$last = 0;
+	$last = null;
 	
 	//Default: make sure we only run once per day
 	$today          = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
@@ -269,7 +266,13 @@ function pmproeewe_extra_emails() {
 	}
 	
 }
+add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
 
+/**
+ * Cleans up old data after updating to new versions.
+ *
+ * @since TBD
+ */
 function pmproeewe_cleanup() {
 	
 	global $wpdb;
@@ -315,11 +318,13 @@ function pmproeewe_cleanup() {
 		update_option( 'pmproeewe_cleanup', '0.7.2', 'no' );
 	}
 }
-
 add_action( 'init', 'pmproeewe_cleanup', 99 );
+
 /*
-Filter to add admin as Bcc for messages from this add-on
-*/
+ * Filter to add admin as Bcc for messages from this add-on.
+ *
+ * @since TBD
+ */
 function pmproeewe_add_admin_as_bcc( $headers ) {
 	
 	$a_email   = get_option( 'admin_email' );
@@ -330,8 +335,10 @@ function pmproeewe_add_admin_as_bcc( $headers ) {
 }
 
 /*
-Function to add links to the plugin row meta
-*/
+ * Function to add links to the plugin row meta.
+ *
+ * @since TBD
+ */
 function pmproeewe_plugin_row_meta( $links, $file ) {
 	if ( strpos( $file, 'pmpro-extra-expiration-warning-emails.php' ) !== false ) {
 		$new_links = array(
