@@ -190,9 +190,9 @@ function pmproeewe_extra_emails() {
 						$pmproemail->sendEmail();
 					} else {
 						$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
-						pmproeewe_log( "Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to {$euser->user_email} with parameters: " . print_r( $pmproemail->data, true ) );
+						pmproeewe_log( "Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to user ID {$e->user_id}." );
 					}
-					pmproeewe_log( sprintf("Membership expiring email sent to %s. ",  $euser->user_email ) );
+					pmproeewe_log( sprintf("Membership expiring email sent to user ID %d. ",  $e->user_id ) );
 				}
 
 				// Update user meta to track that we sent notice.
