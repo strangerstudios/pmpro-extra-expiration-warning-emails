@@ -18,6 +18,10 @@ add_action( "pmpro_cron_expiration_warnings", "pmproeewe_extra_emails", 30 );
  * Trigger execution of test version for the plugin.
  */
 function pmproeewe_test() {
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
 		
@@ -47,24 +51,8 @@ function pmproeewe_test() {
 add_action( 'init', 'pmproeewe_test' );
 
 function pmproeewe_cleanup_test() {
-	
 	global $wpdb;
-	
-	$emails = apply_filters( 'pmproeewe_email_frequency_and_templates', array(
-			30 => 'membership_expiring',
-			60 => 'membership_expiring',
-			90 => 'membership_expiring',
-		)
-	);
-	
-	// Sort the received array in numeric order
-	ksort( $emails, SORT_NUMERIC );
-	
-	foreach ( $emails as $days => $template ) {
-		
-		$meta = "pmpro_expiration_test_notice_{$days}";
-		$wpdb->delete( $wpdb->usermeta, array( 'meta_key' => $meta ) );
-	}
+	$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%'" );
 }
 
 /*
@@ -75,7 +63,7 @@ function pmproeewe_cleanup_test() {
 function pmproeewe_extra_emails() {
 	global $wpdb;
 	
-	$last = null;
+	$last = 0;
 	
 	//Default: make sure we only run once per day
 	$today          = date_i18n( "Y-m-d 00:00:00", current_time( 'timestamp' ) );
@@ -119,6 +107,11 @@ function pmproeewe_extra_emails() {
 	);        //<--- !!! UPDATE THIS ARRAY TO CHANGE WHEN EMAILS GO OUT AND THEIR TEMPLATE FILES !!! -->
 	
 	ksort( $emails, SORT_NUMERIC );
+
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG && isset( $_REQUEST['pmproeewe_test'] ) && current_user_can( 'manage_options' ) ) {
 		error_log( "PMPROEEWE Template array: " . print_r( $emails, true ) );
@@ -136,11 +129,11 @@ function pmproeewe_extra_emails() {
 	
 	foreach ( $emails as $days => $email_template ) {
 		
-		$meta = "pmpro_expiration_notice_{$days}";
+		$meta = "pmpro_expiration_notice_";
 		
 		// use a dummy meta value for tests
 		if ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) ) {
-			$meta = "pmpro_expiration_test_notice_{$days}";
+			$meta = "pmpro_expiration_test_notice_";
 		}
 		
 		$start_ts = strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) );
@@ -170,9 +163,8 @@ function pmproeewe_extra_emails() {
  				mu.enddate,
  				um.meta_value AS notice 			  
  			FROM {$wpdb->pmpro_memberships_users} AS mu
- 			  LEFT JOIN {$wpdb->usermeta} AS um ON ( um.user_id = mu.user_id )
-            	AND ( um.meta_key = %s )
-			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < %s )  
+ 			  LEFT JOIN {$wpdb->usermeta} AS um ON ( um.user_id = mu.user_id ) AND ( um.meta_key = CONCAT( %s, mu.membership_id ) )
+			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < mu.enddate )  
 				AND ( mu.status = 'active' )
 				AND ( mu.enddate IS NOT NULL )
  			    AND ( mu.enddate <> '0000-00-00 00:00:00' )
@@ -181,7 +173,6 @@ function pmproeewe_extra_emails() {
 			ORDER BY mu.enddate",
 			$meta,
 			$days,
-			$today,
 			$interval_start,
 			$interval_end
 		);
@@ -204,7 +195,7 @@ function pmproeewe_extra_emails() {
 			
 			if ( !empty( $euser ) ) {
 				
-				$euser->membership_level = pmpro_getMembershipLevelForUser( $euser->ID );
+				$euser->membership_level = pmpro_getSpecificMembershipLevelForUser( $euser->ID, $e->membership_id );
 				
 				$pmproemail->email   = $euser->user_email;
 				$pmproemail->subject = sprintf( __( "Your membership at %s will end soon", "pmpro" ), get_option( "blogname" ) );
@@ -250,18 +241,19 @@ function pmproeewe_extra_emails() {
 				$sent_emails[] = $e->user_id;
 				
 				//delete any old user meta using this key just in case
-				delete_user_meta( $e->user_id, $meta );
+				$full_meta = $meta . $e->membership_id;
+				delete_user_meta( $e->user_id, $full_meta );
 				
 				//update user meta to track that we sent notice
-				if ( false == update_user_meta( $e->user_id, $meta, $today ) ) {
+				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
 					
 					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-						error_log( "Error: Unable to update {$meta} key for {$e->user_id}!" );
+						error_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
 					}
 					
 				} else {
 					if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
-						error_log( "Saved {$meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
+						error_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
 					}
 				}
 			}
@@ -281,6 +273,11 @@ function pmproeewe_extra_emails() {
 function pmproeewe_cleanup() {
 	
 	global $wpdb;
+
+	// If PMPROEEWE_DEBUG_LOG is not set yet, set it to false.
+	if ( ! defined( 'PMPROEEWE_DEBUG_LOG' ) ) {
+		define( 'PMPROEEWE_DEBUG_LOG', false );
+	}
 	
 	$cleanup = get_option( 'pmproeewe_cleanup', false );
 	
