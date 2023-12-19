@@ -23,9 +23,6 @@ function pmproeewe_test() {
 	
 	if ( pmproeewe_is_test() ) {
 		
-		// Force the system to _not_ send out emails
-		add_filter( 'pmproeewe_send_reminder_to_user', '__return_false', 999 );
-		
 		if ( WP_DEBUG && PMPROEEWE_DEBUG_LOG ) {
 			error_log( "PMPROEEWE: Running expiration functionality" );
 		}
@@ -261,10 +258,10 @@ function pmproeewe_is_test() {
 function pmproeewe_check_for_upgrades() {
 	global $wpdb;
 
-	$pmproeewe_db_version = get_option( 'pmproewee_db_version', 0 );
+	$pmproeewe_db_version = get_option( 'pmproeewe_db_version', 0 );
 
 	// Check if upgrading to v1.0.
-	if ( $pmproewee_db_version < 1.0 ) {
+	if ( $pmproeewe_db_version < 1.0 ) {
 		// Remove old option to track db version.
 		delete_option( 'pmproeewe_cleanup' );
 
@@ -273,7 +270,7 @@ function pmproeewe_check_for_upgrades() {
 		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%' OR meta_key LIKE 'pmpro_expiration_notice_%'" );
 
 		// Update the db version.
-		update_option( 'pmproewee_db_version', 1.0 );
+		update_option( 'pmproeewe_db_version', 1.0 );
 	}
 }
 add_action( 'init', 'pmproeewe_cleanup', 99 );
@@ -284,7 +281,6 @@ add_action( 'init', 'pmproeewe_cleanup', 99 );
  * @since TBD
  */
 function pmproeewe_add_admin_as_bcc( $headers ) {
-	
 	$a_email   = get_option( 'admin_email' );
 	$admin     = get_user_by( 'email', $a_email );
 	$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
