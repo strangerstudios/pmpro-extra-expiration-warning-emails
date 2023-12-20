@@ -3,7 +3,7 @@
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: https://www.paidmembershipspro.com/add-ons/extra-expiration-warning-emails-add-on/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
-Version: .4
+Version: 1.0
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 Text Domain: pmpro-extra-expiration-warning-emails
@@ -23,7 +23,7 @@ add_action( 'plugins_loaded', 'pmproeewe_load_plugin_text_domain' );
 /**
  * Trigger a test run of this plugin.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_test() {
 	global $wpdb;
@@ -48,7 +48,7 @@ add_action( 'init', 'pmproeewe_test' );
 /*
  * Send the extra expiration warning emails.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_extra_emails() {
 	global $wpdb;
@@ -79,7 +79,7 @@ function pmproeewe_extra_emails() {
 	 *
 	 * (PMPro will fill in the .html for you.)
 	 *
-	 * @since TBD
+	 * @since 1.0
 	 *
 	 * @param array $emails An array of days and template files to use for the emails.
 	 */
@@ -95,7 +95,7 @@ function pmproeewe_extra_emails() {
 	/**
 	 * Allow the admin to be Bcc'd on all emails sent by this add-on.
 	 *
-	 * @since TBD
+	 * @since 1.0
 	 *
 	 * @param bool $bcc_admin true to Bcc the admin, false otherwise.
 	 */
@@ -224,7 +224,7 @@ add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
 /**
  * Helper function to determine whether a test is being run.
  *
- * @since TBD
+ * @since 1.0
  *
  * @return bool true if a test is being run, false otherwise.
  */
@@ -235,7 +235,7 @@ function pmproeewe_is_test() {
 /**
  * Fix data after updating to new versions.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_check_for_upgrades() {
 	global $wpdb;
@@ -260,7 +260,7 @@ add_action( 'init', 'pmproeewe_check_for_upgrades', 99 );
 /*
  * Filter to add admin as Bcc for messages from this add-on.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_add_admin_as_bcc( $headers ) {
 	$a_email   = get_option( 'admin_email' );
@@ -273,7 +273,7 @@ function pmproeewe_add_admin_as_bcc( $headers ) {
 /**
  * Add a log entry to the PMProEWEE log.
  *
- * @since TBD
+ * @since 1.0
  *
  * @param string $message The message to log.
  */
@@ -286,7 +286,7 @@ function pmproeewe_log( $message ) {
  * Output the PMProEWEE log to an email or log file
  * depending on the value of the PMPROEEWE_DEBUG constant.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_output_log() {
 	global $pmproewee_logstr;
@@ -310,7 +310,7 @@ function pmproeewe_output_log() {
 /*
  * Function to add links to the plugin row meta.
  *
- * @since TBD
+ * @since 1.0
  */
 function pmproeewe_plugin_row_meta( $links, $file ) {
 	if ( strpos( $file, 'pmpro-extra-expiration-warning-emails.php' ) !== false ) {
