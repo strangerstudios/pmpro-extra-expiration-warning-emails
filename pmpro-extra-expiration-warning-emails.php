@@ -55,11 +55,7 @@ function pmproeewe_extra_emails() {
 
 	// New in v3.5: Unhook the PMPro_Scheduled_Actions class expiration reminder function.
 	if ( class_exists( 'PMPro_Scheduled_Actions' ) ) {
-		remove_action(
-			'pmpro_schedule_daily',
-			array( PMPro_Scheduled_Actions::instance(), 'membership_expiration_reminders' ),
-			99
-		);
+		remove_action( 'pmpro_schedule_daily', array( PMPro_Scheduled_Actions::instance(), 'pmpro_expire_memberships' ), 10 );
 	} else {
 		// Fallback for older versions of PMPro.
 		remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
