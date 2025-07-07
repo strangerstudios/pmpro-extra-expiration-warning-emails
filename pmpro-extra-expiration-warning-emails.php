@@ -3,7 +3,7 @@
 Plugin Name: Paid Memberships Pro - Extra Expiration Warning Emails Add On
 Plugin URI: https://www.paidmembershipspro.com/add-ons/extra-expiration-warning-emails-add-on/
 Description: Send out more than one "membership expiration warning" email to users with PMPro.
-Version: 1.0
+Version: 1.0.1
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 Text Domain: pmpro-extra-expiration-warning-emails
@@ -53,13 +53,18 @@ add_action( 'init', 'pmproeewe_test' );
 function pmproeewe_extra_emails() {
 	global $wpdb;
 
-	// Unhook the core expiration warning email function.
-	remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
-
-	// Clean up errors in the memberships_users table that could cause problems.
-	if( function_exists( 'pmpro_cleanup_memberships_users_table' ) ) {
-		pmpro_cleanup_memberships_users_table();
+	// New in v3.5: Unhook the PMPro_Scheduled_Actions class expiration reminder function.
+	if ( class_exists( 'PMPro_Scheduled_Actions' ) ) {
+		remove_action( 'pmpro_schedule_daily', array( PMPro_Scheduled_Actions::instance(), 'membership_expiration_reminders' ), 99 );
+	} else {
+		// Fallback for older versions of PMPro.
+		remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
+		// Clean up errors in the memberships_users table that could cause problems.
+		if( function_exists( 'pmpro_cleanup_memberships_users_table' ) ) {
+			pmpro_cleanup_memberships_users_table();
+		}
 	}
+
 	
 	/**
 	 * DO NOT edit this add-on!
@@ -219,7 +224,13 @@ function pmproeewe_extra_emails() {
 		pmproeewe_output_log();
 	}
 }
-add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
+// New in v3.5: Hook the PMPro_Scheduled_Actions class daily action.
+if ( class_exists( 'PMPro_Scheduled_Actions' ) ) {
+	add_action( 'pmpro_schedule_daily', 'pmproeewe_extra_emails', 98 );
+} else {
+	// Fallback for older versions of PMPro.
+	add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
+}
 
 /**
  * Helper function to determine whether a test is being run.
