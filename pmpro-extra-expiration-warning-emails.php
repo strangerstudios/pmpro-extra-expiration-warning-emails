@@ -54,8 +54,8 @@ function pmproeewe_extra_emails() {
 	global $wpdb;
 
 	// New in v3.5: Unhook the PMPro_Scheduled_Actions class expiration reminder function.
-	if ( class_exists( 'PMPro_Scheduled_Actions' ) ) {
-		remove_action( 'pmpro_schedule_daily', array( PMPro_Scheduled_Actions::instance(), 'membership_expiration_reminders' ), 99 );
+	if ( class_exists( 'PMPro_Recurring_Actions' ) ) {
+		remove_action( 'pmpro_schedule_daily', array( PMPro_Recurring_Actions::instance(), 'membership_expiration_reminders' ), 99 );
 	} else {
 		// Fallback for older versions of PMPro.
 		remove_action( 'pmpro_cron_expiration_warnings', 'pmpro_cron_expiration_warnings' );
@@ -224,13 +224,22 @@ function pmproeewe_extra_emails() {
 		pmproeewe_output_log();
 	}
 }
-// New in v3.5: Hook the PMPro_Scheduled_Actions class daily action.
-if ( class_exists( 'PMPro_Scheduled_Actions' ) ) {
-	add_action( 'pmpro_schedule_daily', 'pmproeewe_extra_emails', 98 );
-} else {
-	// Fallback for older versions of PMPro.
-	add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
+
+/**
+ * Hook the expiration emails to the PMPro scheduled actions.
+ *
+ * @since 1.0.1
+ */
+function pmproeewe_schedule_expiration_emails() {
+	// New in v3.5: Hook the PMPro_Scheduled_Actions class daily action.
+	if ( class_exists( 'PMPro_Recurring_Actions' ) ) {
+		add_action( 'pmpro_schedule_daily', 'pmproeewe_extra_emails', 98 );
+	} else {
+		// Fallback for older versions of PMPro.
+		add_action( 'pmpro_cron_expiration_warnings', 'pmproeewe_extra_emails', 5 );
+	}
 }
+add_action( 'init', 'pmproeewe_schedule_expiration_emails' );
 
 /**
  * Helper function to determine whether a test is being run.
