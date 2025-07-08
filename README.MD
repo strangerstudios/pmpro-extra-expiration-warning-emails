@@ -1,4 +1,4 @@
-<!-- ![](pmpro-sample-banner.png) -->
+![](pmpro-extra-expiration-warning-emails-banner.jpg)
 
 # [Paid Memberships Pro - Extra Expiration Warning Emails](https://www.paidmembershipspro.com/add-ons/extra-expiration-warning-emails-add-on/) #
 
