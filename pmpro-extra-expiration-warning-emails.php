@@ -176,14 +176,7 @@ function pmproeewe_extra_emails() {
 							$pmproemail = new PMProEmail();
 							$pmproemail->email   = $euser->user_email;
 							$pmproemail->subject = sprintf( __( 'Your membership at %s will end soon', 'pmpro-extra-expiration-warning-emails' ), get_option( 'blogname' ) );
-							
-							// The user specified a template name to use
-							if ( ! empty( $email_template ) ) {
-								$pmproemail->template = $email_template;
-							} else {
-								$pmproemail->template = "membership_expiring";
-							}
-							
+							$pmproemail->template = $email_template;
 							$pmproemail->data = array(
 								"subject"               => $pmproemail->subject,
 								"name"                  => $euser->display_name,
