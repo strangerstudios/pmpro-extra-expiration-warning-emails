@@ -123,6 +123,9 @@ function pmproeewe_extra_emails() {
 	$last = 0;
 	
 	foreach ( $emails as $days => $email_template ) {	
+		// If we don't have a template, use the default PMPro one.
+		$email_template = empty( $email_template ) ? 'membership_expiring' : $email_template;
+
 		// Query returns records that fit between the pmproeewe_email_frequency_and_templates day values
 		// and only if they haven't had a warning notice sent already.
 		$sqlQuery = $wpdb->prepare(
@@ -156,46 +159,50 @@ function pmproeewe_extra_emails() {
 		pmproeewe_log( "Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
 		
 		foreach ( $expiring_soon as $e ) {
-			
-			//send an email
-			$pmproemail = new PMProEmail();
-			$euser      = get_userdata( $e->user_id );
-			
+			// Make sure that we have a user.
+			$euser = get_userdata( $e->user_id );
 			if ( ! empty( $euser ) ) {
-				
 				$euser->membership_level = pmpro_getSpecificMembershipLevelForUser( $euser->ID, $e->membership_id );
-				
-				$pmproemail->email   = $euser->user_email;
-				$pmproemail->subject = sprintf( __( 'Your membership at %s will end soon', 'pmpro-extra-expiration-warning-emails' ), get_option( 'blogname' ) );
-				
-				// The user specified a template name to use
-				if ( ! empty( $email_template ) ) {
-					$pmproemail->template = $email_template;
-				} else {
-					$pmproemail->template = "membership_expiring";
-				}
-				
-				$pmproemail->data = array(
-					"subject"               => $pmproemail->subject,
-					"name"                  => $euser->display_name,
-					"user_login"            => $euser->user_login,
-					"sitename"              => get_option( "blogname" ),
-					"membership_id"         => $euser->membership_level->id,
-					"membership_level_name" => $euser->membership_level->name,
-					"siteemail"             => get_option( 'pmpro_from_email' ),
-					"login_link"            => wp_login_url(),
-					"enddate"               => date_i18n( get_option( 'date_format' ), $euser->membership_level->enddate ),
-					"display_name"          => $euser->display_name,
-					"user_email"            => $euser->user_email,
-				);
 				
 				// Only actually send the message if we're not testing.
 				if ( apply_filters( 'pmproeewe_send_reminder_to_user', true, $euser ) ) {
 					if ( ! pmproeewe_is_test() ) {
-						$pmproemail->sendEmail();
+						// If we are sending the default 'membership_expiring' template, let core PMPro handle it.
+						if ( $email_template === 'membership_expiring' ) {
+							$pmproemail = new PMProEmail();
+							$pmproemail->sendMembershipExpiringEmail( $euser, $e->membership_id );
+						} else {
+							// Send the custom template email.
+							$pmproemail = new PMProEmail();
+							$pmproemail->email   = $euser->user_email;
+							$pmproemail->subject = sprintf( __( 'Your membership at %s will end soon', 'pmpro-extra-expiration-warning-emails' ), get_option( 'blogname' ) );
+							
+							// The user specified a template name to use
+							if ( ! empty( $email_template ) ) {
+								$pmproemail->template = $email_template;
+							} else {
+								$pmproemail->template = "membership_expiring";
+							}
+							
+							$pmproemail->data = array(
+								"subject"               => $pmproemail->subject,
+								"name"                  => $euser->display_name,
+								"user_login"            => $euser->user_login,
+								"sitename"              => get_option( "blogname" ),
+								"membership_id"         => $euser->membership_level->id,
+								"membership_level_name" => $euser->membership_level->name,
+								"siteemail"             => get_option( 'pmpro_from_email' ),
+								"login_link"            => wp_login_url(),
+								"enddate"               => date_i18n( get_option( 'date_format' ), $euser->membership_level->enddate ),
+								"display_name"          => $euser->display_name,
+								"user_email"            => $euser->user_email,
+								"renew_url"             =>  ( ! empty( $euser->membership_level ) && ! empty( $euser->membership_level->id ) ) ? pmpro_url( 'checkout', '?pmpro_level=' . $euser->membership_level->id ) : pmpro_url( 'levels' ),
+							);
+							$pmproemail->sendEmail();
+						}
 					} else {
 						$test_exp_days = round( ( ( $euser->membership_level->enddate - current_time( 'timestamp' ) ) / DAY_IN_SECONDS ), 0 );
-						pmproeewe_log( "Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$pmproemail->template} to user ID {$e->user_id}." );
+						pmproeewe_log( "Test mode and processing warnings for day {$days} (user's membership expires in {$test_exp_days} days): Faking email using template {$email_template} to user ID {$e->user_id}." );
 					}
 					pmproeewe_log( sprintf("Membership expiring email sent to user ID %d. ",  $e->user_id ) );
 				}
