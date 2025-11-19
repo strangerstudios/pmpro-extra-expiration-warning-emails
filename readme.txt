@@ -3,7 +3,7 @@ Contributors: strangerstudios
 Tags: pmpro, paid memberships pro, members, expiration, email, member communication
 Requires at least: 5.2
 Tested up to: 6.8
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 
 Send more than one customized "membership expiration warning" email to users with PMPro.
 
@@ -27,6 +27,10 @@ Please post it in the issues section of GitHub and we'll fix it as soon as we ca
 Please visit our premium support site at http://www.paidmembershipspro.com for more documentation and our support forums.
 
 == Changelog ==
+= 1.0.2 - 2025-11-19 =
+* ENHANCEMENT: Added the !!renew_url!! email template variable to all emails sent by this plugin. #38 (@dparker1005)
+* ENHANCEMENT: Updated the email flow for sending `membership_expiring` emails to use the core PMPro email sending functions to ensure compatibility with future PMPro versions. #38 (@dparker1005)
+
 = 1.0.1 - 2025-07-07 =
 * BUG FIX/ENHANCEMENT: Added support for Action Scheduler in PMPro v3.5+. #36 (@dalemugford)
 
