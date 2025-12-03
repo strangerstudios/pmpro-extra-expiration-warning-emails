@@ -283,9 +283,15 @@ add_action( 'init', 'pmproeewe_check_for_upgrades', 99 );
  * @since 1.0
  */
 function pmproeewe_add_admin_as_bcc( $headers ) {
-	$a_email   = get_option( 'admin_email' );
-	$admin     = get_user_by( 'email', $a_email );
-	$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
+	$a_email = get_option( 'admin_email' );
+	$admin   = get_user_by( 'email', $a_email );
+
+    // Handle cases with the admin_email is not associated with a user.
+    if ( $admin && isset( $admin->first_name, $admin->last_name, $admin->user_email ) ) {
+		$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
+	} elseif ( $a_email && is_email( $a_email ) ) {
+		$headers[] = "Bcc: {$a_email}";
+	}
 	
 	return $headers;
 }
