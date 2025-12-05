@@ -112,6 +112,13 @@ function pmproeewe_extra_emails() {
 	// Use a dummy meta value for tests.
 	$meta = pmproeewe_is_test() ? 'pmproewee_expiration_test_notice_' : 'pmproewee_expiration_notice_';
 
+    // If multisite, we need to adjust the meta key to avoid conflicts.
+    if ( is_multisite() ) {
+        $site_meta =  $meta . get_current_blog_id() . '_';
+    } else {
+        $site_meta = $meta;
+    }
+
 	// Get the current date/time.
 	$today = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
 	// Allow test environment to set the value of 'today'.
@@ -129,22 +136,26 @@ function pmproeewe_extra_emails() {
 		// Query returns records that fit between the pmproeewe_email_frequency_and_templates day values
 		// and only if they haven't had a warning notice sent already.
 		$sqlQuery = $wpdb->prepare(
-			"SELECT DISTINCT
+			"SELECT
   				mu.user_id,
   				mu.membership_id,
   				mu.startdate,
  				mu.enddate,
- 				um.meta_value AS notice 			  
+ 				MAX(um.meta_value) AS notice 			  
  			FROM {$wpdb->pmpro_memberships_users} AS mu
- 			  LEFT JOIN {$wpdb->usermeta} AS um ON ( um.user_id = mu.user_id ) AND ( um.meta_key = CONCAT( %s, mu.membership_id ) )
+ 			  LEFT JOIN {$wpdb->usermeta} AS um 
+              ON ( um.user_id = mu.user_id )
+              AND ( um.meta_key = CONCAT( %s, mu.membership_id ) OR um.meta_key = CONCAT( %s, mu.membership_id ) )
 			WHERE ( um.meta_value IS NULL OR DATE_ADD(um.meta_value, INTERVAL %d DAY) < mu.enddate )  
 				AND ( mu.status = 'active' )
 				AND ( mu.enddate IS NOT NULL )
  				AND ( mu.enddate <> '0000-00-00 00:00:00' )
  				AND ( mu.enddate BETWEEN %s AND %s )
  				AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
+            GROUP BY mu.user_id, mu.membership_id, mu.startdate, mu.enddate
 			ORDER BY mu.enddate",
 			$meta,
+            $site_meta,
 			$days,
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) ) ), // Start date to being looking for expiring memberhsips.
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) ) ) // End date to stop looking for expiring memberships.
@@ -200,13 +211,19 @@ function pmproeewe_extra_emails() {
 					pmproeewe_log( sprintf("Membership expiring email sent to user ID %d. ",  $e->user_id ) );
 				}
 
-				// Update user meta to track that we sent notice.
-				$full_meta = $meta . $e->membership_id;
-				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
-					pmproeewe_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
-				} else {
-					pmproeewe_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
-				}
+                // Update user meta to track that we sent notice.
+                $full_meta = $site_meta . $e->membership_id;
+                if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
+                    pmproeewe_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
+                } else {
+                    pmproeewe_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
+                }
+
+                if ( $meta !== $site_meta ) {
+                    // Remove the non-multisite meta key for backward compatibility.
+                    $full_meta_compat = $meta . $e->membership_id;
+                    delete_user_meta( $e->user_id, $full_meta_compat ); // Remove old key.
+                }
 			}
 		}
 		
