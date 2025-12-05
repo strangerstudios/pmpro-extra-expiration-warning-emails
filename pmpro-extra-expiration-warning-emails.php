@@ -218,6 +218,12 @@ function pmproeewe_extra_emails() {
                 } else {
                     pmproeewe_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
                 }
+
+                if ( $meta !== $site_meta ) {
+                    // Remove the non-multisite meta key for backward compatibility.
+                    $full_meta_compat = $meta . $e->membership_id;
+                    delete_user_meta( $e->user_id, $full_meta_compat ); // Remove old key.
+                }
 			}
 		}
 		
