@@ -35,8 +35,12 @@ function pmproeewe_test() {
 		pmproeewe_extra_emails();
 		pmproeewe_log( "TEST: Cleaning up after the test" );
 		
-		// Clean up after the test.
-		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmproewee_expiration_test_notice_%'" );
+		// Clean up after the test. Matches both the legacy (unscoped) and blog-prefixed shapes.
+		$wpdb->query( $wpdb->prepare(
+			"DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s OR meta_key LIKE %s",
+			'pmproewee_expiration_test_notice_%',
+			$wpdb->get_blog_prefix() . 'pmproewee_expiration_test_notice_%'
+		) );
 
 		// Output the log.
 		pmproeewe_output_log();
@@ -144,7 +148,7 @@ function pmproeewe_extra_emails() {
  				AND ( mu.enddate BETWEEN %s AND %s )
  				AND ( mu.membership_id <> 0 OR mu.membership_id <> NULL )
 			ORDER BY mu.enddate",
-			$meta,
+			$wpdb->get_blog_prefix() . $meta,
 			$days,
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$last} days", current_time( 'timestamp' ) ) ), // Start date to being looking for expiring memberhsips.
 			date_i18n( 'Y-m-d H:i:s', strtotime( "{$today} +{$days} days", current_time( 'timestamp' ) ) ) // End date to stop looking for expiring memberships.
@@ -162,6 +166,20 @@ function pmproeewe_extra_emails() {
 			// Make sure that we have a user.
 			$euser = get_userdata( $e->user_id );
 			if ( ! empty( $euser ) ) {
+				// Migrate any legacy (pre-per-site) notice timestamp written by older versions of
+				// this add-on into the per-site key, then drop the legacy row. If the legacy
+				// notice was sent within the current $days window of enddate, skip the send to
+				// avoid double-notifying during the transition.
+				$legacy_notice = get_user_meta( $e->user_id, $meta . $e->membership_id, true );
+				if ( ! empty( $legacy_notice ) ) {
+					update_user_option( $e->user_id, $meta . $e->membership_id, $legacy_notice );
+					delete_user_meta( $e->user_id, $meta . $e->membership_id );
+					if ( strtotime( $legacy_notice ) + ( $days * DAY_IN_SECONDS ) >= strtotime( $e->enddate ) ) {
+						pmproeewe_log( "Skipped user ID {$e->user_id} membership {$e->membership_id}: legacy notice {$legacy_notice} is within {$days} days of enddate {$e->enddate}." );
+						continue;
+					}
+				}
+
 				$euser->membership_level = pmpro_getSpecificMembershipLevelForUser( $euser->ID, $e->membership_id );
 				
 				// Only actually send the message if we're not testing.
@@ -200,9 +218,12 @@ function pmproeewe_extra_emails() {
 					pmproeewe_log( sprintf("Membership expiring email sent to user ID %d. ",  $e->user_id ) );
 				}
 
-				// Update user meta to track that we sent notice.
+				// Track that we sent the notice. update_user_option (not update_user_meta) scopes
+				// the meta_key to $wpdb->get_blog_prefix(), so on a multisite where each subsite
+				// runs its own PMPro install the notice-sent state from one subsite does not
+				// clobber another.
 				$full_meta = $meta . $e->membership_id;
-				if ( false == update_user_meta( $e->user_id, $full_meta, $today ) ) {
+				if ( false == update_user_option( $e->user_id, $full_meta, $today ) ) {
 					pmproeewe_log( "Error: Unable to update {$full_meta} key for {$e->user_id}!" );
 				} else {
 					pmproeewe_log( "Saved {$full_meta} = {$today} for {$e->user_id}: enddate = " . date_i18n( 'Y-m-d H:i:s', $euser->membership_level->enddate ) );
