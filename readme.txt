@@ -2,8 +2,8 @@
 Contributors: strangerstudios
 Tags: pmpro, paid memberships pro, members, expiration, email, member communication
 Requires at least: 5.2
-Tested up to: 6.8
-Stable tag: 1.0.2
+Tested up to: 6.9
+Stable tag: 1.0.3
 
 Send more than one customized "membership expiration warning" email to users with PMPro.
 
@@ -27,6 +27,11 @@ Please post it in the issues section of GitHub and we'll fix it as soon as we ca
 Please visit our premium support site at http://www.paidmembershipspro.com for more documentation and our support forums.
 
 == Changelog ==
+= 1.0.3 - 2026-05-15 =
+* BUG FIX/ENHANCEMENT: The admin Bcc email now falls back to the bare `admin_email` value when no WordPress user is associated with it, instead of being silently dropped. #41 (@gazer22)
+* BUG FIX: Fixed a PHP warning and malformed `Bcc:` header that occurred when the site's `admin_email` was not associated with a WordPress user. #41 (@gazer22)
+* BUG FIX: Fixed an issue in multisite environments where the same `membership_id` on different subsites could share a single notice-sent timestamp, causing some subsites to skip expiration notices that should have been sent. Notice tracking is now scoped per-site via `update_user_option()`, with legacy timestamps migrated automatically. #42 (@dparker1005)
+
 = 1.0.2 - 2025-11-19 =
 * ENHANCEMENT: Added the !!renew_url!! email template variable to all emails sent by this plugin. #38 (@dparker1005)
 * ENHANCEMENT: Updated the email flow for sending `membership_expiring` emails to use the core PMPro email sending functions to ensure compatibility with future PMPro versions. #38 (@dparker1005)
