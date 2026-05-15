@@ -286,9 +286,14 @@ function pmproeewe_add_admin_as_bcc( $headers ) {
 	$a_email = get_option( 'admin_email' );
 	$admin   = get_user_by( 'email', $a_email );
 
-    // Handle cases with the admin_email is not associated with a user.
-    if ( $admin && isset( $admin->first_name, $admin->last_name, $admin->user_email ) ) {
-		$headers[] = "Bcc: {$admin->first_name} {$admin->last_name} <{$admin->user_email}>";
+	// Handle cases where the admin_email is not associated with a user, or the user has no name on file.
+	if ( $admin && is_email( $admin->user_email ) ) {
+		$name = trim( $admin->first_name . ' ' . $admin->last_name );
+		if ( '' !== $name ) {
+			$headers[] = "Bcc: {$name} <{$admin->user_email}>";
+		} else {
+			$headers[] = "Bcc: {$admin->user_email}";
+		}
 	} elseif ( $a_email && is_email( $a_email ) ) {
 		$headers[] = "Bcc: {$a_email}";
 	}
