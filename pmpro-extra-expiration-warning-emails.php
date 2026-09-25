@@ -10,6 +10,10 @@ Text Domain: pmpro-extra-expiration-warning-emails
 Domain Path: /languages
 */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 define( 'PMPROEEWE_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
@@ -36,6 +40,7 @@ function pmproeewe_test() {
 		pmproeewe_log( "TEST: Cleaning up after the test" );
 		
 		// Clean up after the test. Matches both the legacy (unscoped) and blog-prefixed shapes.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared bulk cleanup of test usermeta rows; no cache to use.
 		$wpdb->query( $wpdb->prepare(
 			"DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s OR meta_key LIKE %s",
 			'pmproewee_expiration_test_notice_%',
@@ -119,7 +124,9 @@ function pmproeewe_extra_emails() {
 	// Get the current date/time.
 	$today = date_i18n( "Y-m-d H:i:s", current_time( 'timestamp' ) );
 	// Allow test environment to set the value of 'today'.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Admin-only test mode (manage_options checked in pmproeewe_is_test()); only writes temporary test meta that is deleted in the same request.
 	if ( pmproeewe_is_test() && isset( $_REQUEST['pmproeewe_test_date'] ) ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- Admin-only test mode (see above). Not unslashed because $today is saved via update_user_option(), which unslashes itself.
 		$today = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] ) . ' 00:00:00';
 	}
 	
@@ -159,6 +166,7 @@ function pmproeewe_extra_emails() {
 		}
 		pmproeewe_log( "SQL used: {$sqlQuery}" );
 		
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- $sqlQuery is built with $wpdb->prepare() above; the optional LIMIT is the site-defined PMPRO_CRON_LIMIT constant.
 		$expiring_soon = $wpdb->get_results( $sqlQuery );
 		pmproeewe_log( "Found {$wpdb->num_rows} records to process for expiration warnings that are {$days} days out" );
 		
@@ -270,6 +278,7 @@ add_action( 'init', 'pmproeewe_schedule_expiration_emails' );
  * @return bool true if a test is being run, false otherwise.
  */
 function pmproeewe_is_test() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only flag check, gated by manage_options.
 	return ( isset( $_REQUEST['pmproeewe_test'] ) && intval( $_REQUEST['pmproeewe_test'] ) === 1 && current_user_can( 'manage_options' ) );
 }
 
@@ -290,6 +299,7 @@ function pmproeewe_check_for_upgrades() {
 
 		// Delete all user meta beginning with pmpro_expiration_test_notice_
 		// or pmpro_expiration_notice_ to start with a clean slate.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Static one-time upgrade cleanup query with no user input.
 		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'pmpro_expiration_test_notice_%' OR meta_key LIKE 'pmpro_expiration_notice_%'" );
 
 		// Update the db version.
