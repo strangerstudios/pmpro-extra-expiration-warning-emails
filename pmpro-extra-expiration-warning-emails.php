@@ -126,8 +126,8 @@ function pmproeewe_extra_emails() {
 	// Allow test environment to set the value of 'today'.
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Admin-only test mode (manage_options checked in pmproeewe_is_test()); only writes temporary test meta that is deleted in the same request.
 	if ( pmproeewe_is_test() && isset( $_REQUEST['pmproeewe_test_date'] ) ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- Admin-only test mode (see above). Not unslashed because $today is saved via update_user_option(), which unslashes itself.
-		$today = sanitize_text_field( $_REQUEST['pmproeewe_test_date'] ) . ' 00:00:00';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Admin-only test mode (see above).
+		$today = sanitize_text_field( wp_unslash( $_REQUEST['pmproeewe_test_date'] ) ) . ' 00:00:00';
 	}
 	
 	// The previous $days value that we sent emails for.
